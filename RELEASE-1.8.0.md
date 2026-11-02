@@ -8,7 +8,7 @@
 - O conversor permite selecionar independentemente as moedas suportadas e distingue USD comercial, USD turismo, cotação de mercado e fallback PTAX salvo.
 - Checagem de Releases GitHub a cada aproximadamente 12 horas via JobScheduler, com aviso local, comparação de versão, limite de tamanho, SHA-256 quando fornecido pelo GitHub, conferência do pacote/certificado e instalação com confirmação do Android.
 - Workflow de tag cria Releases assinadas; a chave é lida apenas dos segredos privados do GitHub Actions e nunca do repositório.
-- Validação desta etapa: `python verify.py` passou (29 testes de domínio); `python verify.py --emulator emulator-5556` passou (308 verificações Android na API 34; carga local de parsers em 2.554 ms).
+- Validação desta etapa: `python verify.py` passou (29 testes de domínio); `python verify.py --emulator emulator-5556` passou (308 verificações Android na API 34; carga local de parsers em 2.012 ms).
 - Substitui o JSON único em `SharedPreferences` por SQLite (`MarketArchiveDb`) com tabela por observação e chave primária `(moeda, horário em ms)`.
 - Gravação transacional, consultas por moeda e intervalo com índice e deduplicação pelo timestamp do fornecedor.
 - Retenção de até 5.000 observações por moeda e 365 dias; pontos fora da janela e timestamps futuros são descartados.
