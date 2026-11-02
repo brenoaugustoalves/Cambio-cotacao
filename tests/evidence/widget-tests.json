@@ -1,0 +1,7 @@
+[
+  "Pinned widget renders real quote and historical sparkline",
+  "Offline widget queues update and labels saved data",
+  "Scheduled widget refresh recovers when network returns",
+  "Widget opens application",
+  "Landscape activity recreation preserves a functioning screen"
+]

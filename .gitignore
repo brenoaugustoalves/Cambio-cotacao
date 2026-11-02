@@ -1,0 +1,10 @@
+build/
+.signing/
+__pycache__/
+*.pyc
+tests/android-matrix-logs/
+tests/android-resilience-logs/
+tests/stress-results/
+tests/evidence*/**/*.log
+tests/evidence*/**/*results*.json
+tests/evidence*/**/diagnostic-probe-result.txt
