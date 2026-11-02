@@ -42,6 +42,7 @@ public final class MainActivity extends Activity {
     private final Map<String,Spinner> futuresSelectors=new LinkedHashMap<>();
     private final Map<String,TextView> futuresDetails=new LinkedHashMap<>();
     private final Set<FxCurrency> historyLoading=EnumSet.noneOf(FxCurrency.class);
+    private final Set<String> dailyHistoryLoading=new HashSet<>();
     private Map<FxCurrency,MarketClient.Quote> market=Collections.emptyMap();
     private TextView marketPair,marketRate,marketDate,marketStatus,marketMove;
     private TextView marketSourceNote,tourismOverviewPrice,tourismOverviewDate;
@@ -54,6 +55,12 @@ public final class MainActivity extends Activity {
     private String themeMode;
     private boolean light;
     private LinearLayout overviewContainer;
+    private LinearLayout currencySection,marketsSection,sourcesSection;
+    private final Map<String,Button> sectionButtons=new LinkedHashMap<>();
+    private LinearLayout currencyQuoteSection,marketChartSection,ptaxSection,converterSection,compareSection;
+    private final Map<String,Button> currencySectionButtons=new LinkedHashMap<>();
+    private String selectedSection="Moedas";
+    private String selectedCurrencySection="Cotação";
     private LinearLayout overviewList;
     private Button overviewMore;
     private boolean overviewExpanded=false;
@@ -81,6 +88,23 @@ public final class MainActivity extends Activity {
     private TextView label(String value,int size,int color,boolean bold){TextView v=new TextView(this);v.setText(value);v.setTextSize(size);v.setTextColor(color);v.setFontFeatureSettings("tnum");v.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));v.setLineSpacing(dp(2),1);return v;}
     private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
     private LinearLayout row(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.HORIZONTAL);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
+    private void showMainSection(String destination){
+        if(currencySection==null)return;selectedSection=destination;
+        currencySection.setVisibility("Moedas".equals(destination)?View.VISIBLE:View.GONE);
+        marketsSection.setVisibility("Bolsa".equals(destination)?View.VISIBLE:View.GONE);
+        sourcesSection.setVisibility("Fontes".equals(destination)?View.VISIBLE:View.GONE);
+        for(Map.Entry<String,Button> entry:sectionButtons.entrySet()){Button tab=entry.getValue();boolean active=entry.getKey().equals(destination);tab.setSelected(active);tab.setBackground(shape(active?MINT:(light?0xFFE1ECEF:0xFF203641),14));tab.setTextColor(active?(light?0xFFFFFFFF:BG):MUTED);tab.setContentDescription(entry.getKey()+(active?", seção selecionada":", abrir seção"));}
+        if(mainScroll!=null)mainScroll.smoothScrollTo(0,0);
+    }
+    private void showCurrencySection(String destination){
+        if(currencyQuoteSection==null)return;selectedCurrencySection=destination;
+        currencyQuoteSection.setVisibility("Cotação".equals(destination)?View.VISIBLE:View.GONE);
+        marketChartSection.setVisibility("Gráfico".equals(destination)?View.VISIBLE:View.GONE);
+        ptaxSection.setVisibility("PTAX".equals(destination)?View.VISIBLE:View.GONE);
+        converterSection.setVisibility("Converter".equals(destination)?View.VISIBLE:View.GONE);
+        compareSection.setVisibility("Outras".equals(destination)?View.VISIBLE:View.GONE);
+        for(Map.Entry<String,Button> entry:currencySectionButtons.entrySet()){Button tab=entry.getValue();boolean active=entry.getKey().equals(destination);tab.setSelected(active);tab.setBackground(shape(active?MINT:(light?0xFFE1ECEF:0xFF203641),12));tab.setTextColor(active?(light?0xFFFFFFFF:BG):MUTED);tab.setContentDescription(entry.getKey()+(active?", assunto selecionado":", abrir assunto"));}if(mainScroll!=null)mainScroll.smoothScrollTo(0,0);
+    }
     private void add(LinearLayout parent,View child,int top){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(top);parent.addView(child,p);}
     private LinearLayout panel(LinearLayout parent,int color){LinearLayout l=column();l.setPadding(dp(16),dp(17),dp(16),dp(17));l.setBackground(shape(color,20));add(parent,l,12);return l;}
     private Button button(String value){Button b=new Button(this);b.setText(value);b.setTextSize(13);b.setAllCaps(false);b.setTextColor(MINT);b.setMinHeight(dp(48));b.setMinimumHeight(dp(48));b.setMinWidth(0);b.setMinimumWidth(0);b.setPadding(dp(10),0,dp(10),0);b.setBackground(shape(light?0xFFE1ECEF:0xFF203641,14));return b;}
@@ -92,7 +116,7 @@ public final class MainActivity extends Activity {
         if(light){BG=0xFFF1F5F7;CARD=0xFFFFFFFF;TEXT=0xFF132A35;MUTED=0xFF476271;MINT=0xFF086A53;AMBER=0xFF805300;}
         String incoming=getIntent().getStringExtra("currency");if(incoming!=null)try{RateStore.select(this,FxCurrency.valueOf(incoming));}catch(IllegalArgumentException ignored){}
         boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);
-        if(saved!=null){days=saved.getInt("days",30);ptaxOpen=saved.getBoolean("ptaxOpen",false);}
+        if(saved!=null){days=saved.getInt("days",30);ptaxOpen=saved.getBoolean("ptaxOpen",false);marketPeriodDays=saved.getInt("marketPeriodDays",1);selectedSection=saved.getString("section","Moedas");selectedCurrencySection=saved.getString("currencySection","Cotação");}
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         UiBars.apply(this,light);
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
@@ -111,38 +135,41 @@ public final class MainActivity extends Activity {
         refresh=button("Atualizar ↻");refresh.setContentDescription("Atualizar cotações");refresh.setOnClickListener(v->load());header.addView(refresh,new LinearLayout.LayoutParams(largeFont?-1:dp(105),-2));
         add(content,header,0);
         LinearLayout actions=row();Button settings=button("Preferências");settings.setContentDescription("Preferências, alertas e privacidade");settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));Button diagnostic=button("Diagnóstico");diagnostic.setContentDescription("Diagnóstico do widget e falhas");diagnostic.setOnClickListener(v->startActivity(new Intent(this,DiagnosticsActivity.class)));actions.addView(settings,new LinearLayout.LayoutParams(0,dp(42),1));LinearLayout.LayoutParams diagnosticLp=new LinearLayout.LayoutParams(0,dp(42),1);diagnosticLp.leftMargin=dp(8);actions.addView(diagnostic,diagnosticLp);add(content,actions,8);
-        Button economy=button("Painel econômico · Brasil");economy.setOnClickListener(v->startActivity(new Intent(this,EconomyActivity.class)));add(content,economy,8);
-        pairText=label("",13,MUTED,false);add(content,pairText,12);
+        LinearLayout navigation=row();String[] destinations={"Moedas","Bolsa","Economia","Fontes"};for(int i=0;i<destinations.length;i++){String destination=destinations[i];Button tab=button(destination);tab.setTextSize(11);tab.setPadding(dp(3),0,dp(3),0);tab.setMinHeight(dp(42));tab.setMinimumHeight(dp(42));LinearLayout.LayoutParams tabLp=new LinearLayout.LayoutParams(0,dp(44),1);if(i>0)tabLp.leftMargin=dp(6);navigation.addView(tab,tabLp);sectionButtons.put(destination,tab);tab.setOnClickListener(v->{if(destination.equals("Economia")){startActivity(new Intent(this,EconomyActivity.class));return;}showMainSection(destination);});}add(content,navigation,12);
+        currencySection=column();marketsSection=column();sourcesSection=column();add(content,currencySection,0);add(content,marketsSection,0);add(content,sourcesSection,0);marketsSection.setVisibility(View.GONE);sourcesSection.setVisibility(View.GONE);
+        LinearLayout currencyMenu=row();String[] currencyTopics={"Cotação","Gráfico","PTAX","Converter","Outras"};for(int i=0;i<currencyTopics.length;i++){String topic=currencyTopics[i];Button tab=button(topic);tab.setTextSize(10);tab.setPadding(dp(2),0,dp(2),0);LinearLayout.LayoutParams topicLp=new LinearLayout.LayoutParams(0,dp(42),1);if(i>0)topicLp.leftMargin=dp(4);currencyMenu.addView(tab,topicLp);currencySectionButtons.put(topic,tab);tab.setOnClickListener(v->showCurrencySection(topic));}add(currencySection,currencyMenu,0);
+        currencyQuoteSection=column();marketChartSection=column();ptaxSection=column();converterSection=column();compareSection=column();add(currencySection,currencyQuoteSection,0);add(currencySection,marketChartSection,0);add(currencySection,ptaxSection,0);add(currencySection,converterSection,0);add(currencySection,compareSection,0);showCurrencySection(selectedCurrencySection);showMainSection(selectedSection);
+        pairText=label("",13,MUTED,false);add(currencyQuoteSection,pairText,2);
         selector=new Spinner(this);selector.setContentDescription("Selecionar moeda para cotação em reais");selector.setBackground(shape(CARD,14));selector.setPopupBackgroundDrawable(shape(CARD,14));
         ArrayAdapter<FxCurrency> adapter=new ArrayAdapter<FxCurrency>(this,android.R.layout.simple_spinner_item,FxCurrency.values()){
             @Override public View getView(int pos,View old,ViewGroup parent){TextView t=label(getItem(pos).toString()+"   ▾",16,TEXT,true);t.setPadding(dp(14),dp(15),dp(14),dp(15));return t;}
             @Override public View getDropDownView(int pos,View old,ViewGroup parent){TextView t=label(getItem(pos).toString(),15,TEXT,false);t.setPadding(dp(16),dp(14),dp(16),dp(14));return t;}
-        };selector.setAdapter(adapter);selector.setSelection(currency.ordinal());add(content,selector,14);
-        selector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int position,long id){FxCurrency next=FxCurrency.values()[position];if(next==currency)return;generation++;if(request!=null)request.cancel(true);loading=false;confirmed=false;currency=next;tourismMode=next==FxCurrency.USD&&Preferences.prefs(MainActivity.this).getBoolean("usd_tourism",false);RateStore.select(MainActivity.this,currency);prefs=RateStore.prefs(MainActivity.this,currency);readCache();updateDisplay();CambioWidget.renderAll(MainActivity.this,null);load();}});
-        usdModes=row();commercialButton=button("Dólar comercial");tourismButton=button("Dólar turismo");usdModes.addView(commercialButton,new LinearLayout.LayoutParams(0,dp(48),1));LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,dp(48),1);tp.leftMargin=dp(8);usdModes.addView(tourismButton,tp);add(content,usdModes,8);
+        };selector.setAdapter(adapter);selector.setSelection(currency.ordinal());add(currencyQuoteSection,selector,10);
+        selector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int position,long id){FxCurrency next=FxCurrency.values()[position];if(next==currency)return;generation++;if(request!=null)request.cancel(true);loading=false;confirmed=false;currency=next;tourismMode=next==FxCurrency.USD&&Preferences.prefs(MainActivity.this).getBoolean("usd_tourism",false);RateStore.select(MainActivity.this,currency);prefs=RateStore.prefs(MainActivity.this,currency);readCache();updateDisplay();CambioWidget.renderAll(MainActivity.this,null);load();if(marketPeriodDays>1)loadDailyPeriod(currency,marketPeriodDays);}});
+        usdModes=row();commercialButton=button("Dólar comercial");tourismButton=button("Dólar turismo");usdModes.addView(commercialButton,new LinearLayout.LayoutParams(0,dp(48),1));LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,dp(48),1);tp.leftMargin=dp(8);usdModes.addView(tourismButton,tp);add(currencyQuoteSection,usdModes,8);
         commercialButton.setOnClickListener(v->selectUsdMode(false));tourismButton.setOnClickListener(v->selectUsdMode(true));
-        favoriteButton=button("");favoriteButton.setOnClickListener(v->{Preferences.favorite(this,currency,!Preferences.favorite(this,currency));updateFavorite();reorderOverview();});add(content,favoriteButton,8);
-        add(content,label("Atualização em primeiro plano: Wi‑Fi até 1 min; dados móveis até 5 min; economia de bateria, 15 min. O Android pode adiar consultas em segundo plano.",11,MUTED,false),5);
-        LinearLayout marketPanel=panel(content,light?0xFFDCF1E9:0xFF16302F);
+        favoriteButton=button("");favoriteButton.setOnClickListener(v->{Preferences.favorite(this,currency,!Preferences.favorite(this,currency));updateFavorite();reorderOverview();});add(currencyQuoteSection,favoriteButton,8);
+        add(currencyQuoteSection,label("Atualização automática pode ser adiada pelo Android. Consulte o horário da fonte.",11,MUTED,false),5);
+        LinearLayout marketPanel=panel(currencyQuoteSection,light?0xFFDCF1E9:0xFF16302F);
         marketPair=label("COTAÇÃO DE MERCADO",12,MINT,true);add(marketPanel,marketPair,0);
         marketRate=label("—",40,TEXT,true);marketRate.setAutoSizeTextTypeUniformWithConfiguration(26,40,1,android.util.TypedValue.COMPLEX_UNIT_SP);marketRate.setMaxLines(1);add(marketPanel,marketRate,5);
         marketSourceNote=label("Venda (ask) · AwesomeAPI · referência, não preço final",12,MUTED,false);add(marketPanel,marketSourceNote,3);
         marketMove=label("Aguardando duas publicações de mercado",12,MUTED,true);add(marketPanel,marketMove,10);
         marketDate=label("Aguardando cotação de mercado",12,TEXT,false);add(marketPanel,marketDate,12);
         marketStatus=label("Consultando a fonte de mercado…",11,MUTED,false);add(marketPanel,marketStatus,5);
-        LinearLayout intradayPanel=panel(content,CARD);
+        LinearLayout intradayPanel=panel(marketChartSection,CARD);
         add(intradayPanel,label("Gráfico de mercado · subida e queda",19,TEXT,true),0);
         intradaySourceNote=label("Moeda selecionada acima · venda (ask) · AwesomeAPI",12,MUTED,false);add(intradayPanel,intradaySourceNote,4);
-        LinearLayout marketPeriodRow=row();int[] marketDays={1,5,30,365};String[] marketLabels={"1D","5D","1M","1A"};for(int i=0;i<marketDays.length;i++){final int n=marketDays[i];Button b=button(marketLabels[i]);marketPeriods.put(n,b);LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,dp(42),1);if(i>0)bp.leftMargin=dp(6);marketPeriodRow.addView(b,bp);b.setOnClickListener(v->{marketPeriodDays=n;updateIntraday();});}add(intradayPanel,marketPeriodRow,10);
+        LinearLayout marketPeriodRow=row();int[] marketDays={1,5,30,365};String[] marketLabels={"1D","5D","1M","1A"};for(int i=0;i<marketDays.length;i++){final int n=marketDays[i];Button b=button(marketLabels[i]);marketPeriods.put(n,b);LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,dp(42),1);if(i>0)bp.leftMargin=dp(6);marketPeriodRow.addView(b,bp);b.setOnClickListener(v->{marketPeriodDays=n;if(n==1){updateIntraday();loadHistory(currency);}else loadDailyPeriod(currency,n);});}add(intradayPanel,marketPeriodRow,10);
         intradayStatus=label("Aguardando pontos publicados hoje",12,MUTED,false);add(intradayPanel,intradayStatus,8);
         intradayChart=new IntradayView(this);LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(-1,dp(225));ip.topMargin=dp(6);intradayPanel.addView(intradayChart,ip);
-        add(intradayPanel,label("Linha contínua liga as cotações publicadas. Verde = subiu · vermelho = caiu. Toque ou arraste para consultar preço, horário e variação do ponto.",11,MUTED,false),4);
+        add(intradayPanel,label("Verde = subiu · vermelho = caiu. Toque ou arraste para consultar preço, horário e variação. A linha reta liga pontos reais; não representa cotações entre eles.",11,MUTED,false),4);
         intradayMovement=label("Aguardando duas publicações para calcular a variação",14,TEXT,true);intradayMovement.setPadding(dp(12),dp(11),dp(12),dp(11));intradayMovement.setBackground(shape(CARD,12));intradayMovement.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(intradayPanel,intradayMovement,7);
         intradayChangesToggle=button("Ver histórico completo");intradayChangesToggle.setVisibility(View.GONE);add(intradayPanel,intradayChangesToggle,7);intradayChanges=column();add(intradayPanel,intradayChanges,4);
-        intradayChangesToggle.setOnClickListener(v->{intradayChangesExpanded=!intradayChangesExpanded;intradayChanges.setVisibility(intradayChangesExpanded?View.VISIBLE:View.GONE);intradayChangesToggle.setText(intradayChangesExpanded?"Ocultar alterações ↑":"Ver alterações do dia");updateIntradayMovements(currentIntradayPoints,-1);});
+        intradayChangesToggle.setOnClickListener(v->{intradayChangesExpanded=!intradayChangesExpanded;intradayChanges.setVisibility(intradayChangesExpanded?View.VISIBLE:View.GONE);intradayChangesToggle.setText(intradayChangesExpanded?"Ocultar alterações ↑":"Ver alterações do período");updateIntradayMovements(currentIntradayPoints,-1);});
         intradayChart.setOnSelectionChangedListener(index->updateIntradayMovements(currentIntradayPoints,index));
-        add(intradayPanel,label("Cada ponto vem da AwesomeAPI e é guardado localmente quando recebido. A linha conecta apenas cotações observadas; não há interpolação. Períodos longos começam a acumular histórico após a atualização do app.",11,MUTED,false),7);
-        Button ptaxToggle=button("");LinearLayout ptaxContent=column();add(content,ptaxToggle,12);add(content,ptaxContent,0);
+        add(intradayPanel,label("1D mostra observações intradiárias reais. 5D, 1M e 1A consultam fechamentos diários da AwesomeAPI. Períodos usam séries separadas. Cada ponto e horário vêm da fonte; nenhum preço é criado no intervalo.",11,MUTED,false),7);
+        Button ptaxToggle=button("");LinearLayout ptaxContent=column();add(ptaxSection,ptaxToggle,8);add(ptaxSection,ptaxContent,0);
         Runnable updatePtax=()->{ptaxContent.setVisibility(ptaxOpen?View.VISIBLE:View.GONE);ptaxToggle.setText(ptaxOpen?"Ocultar PTAX · referência do Banco Central ↑":"Ver PTAX · referência do Banco Central ↓");};
         ptaxToggle.setOnClickListener(v->{ptaxOpen=!ptaxOpen;updatePtax.run();});updatePtax.run();
         statusText=label("Consultando a fonte…",12,AMBER,false);statusText.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(ptaxContent,statusText,12);
@@ -163,12 +190,12 @@ public final class MainActivity extends Activity {
         rangeText=label("—",12,MUTED,false);add(plot,rangeText,4);
         LinearLayout stats=row();LinearLayout a=column(),b=column();a.addView(label("MÍNIMA DO PERÍODO",10,MUTED,true));b.addView(label("MÁXIMA DO PERÍODO",10,MUTED,true));minimum=label("—",18,TEXT,true);maximum=label("—",18,TEXT,true);add(a,minimum,4);add(b,maximum,4);stats.addView(a,new LinearLayout.LayoutParams(0,-2,1));stats.addView(b,new LinearLayout.LayoutParams(0,-2,1));add(plot,stats,18);
         countText=label("Somente publicações da fonte. Escala vertical ajustada.",11,MUTED,false);add(plot,countText,14);
-        LinearLayout converter=panel(content,CARD);converterTitle=label("",19,TEXT,true);add(converter,converterTitle,0);amountLabel=label("",12,MUTED,false);add(converter,amountLabel,14);
+        LinearLayout converter=panel(converterSection,CARD);converterTitle=label("",19,TEXT,true);add(converter,converterTitle,0);amountLabel=label("",12,MUTED,false);add(converter,amountLabel,14);
         amount=new EditText(this);amount.setTextColor(TEXT);amount.setHintTextColor(MUTED);amount.setTextSize(25);amount.setSingleLine(true);amount.setInputType(android.text.InputType.TYPE_CLASS_NUMBER|android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);amount.setFilters(new InputFilter[]{new InputFilter.LengthFilter(15)});amount.setPadding(dp(14),dp(10),dp(14),dp(10));amount.setBackground(shape(light?0xFFE1ECEF:0xFF1C333F,12));amount.setContentDescription("Valor em dólares. Use vírgula ou ponto decimal, sem separador de milhar.");amount.setSelectAllOnFocus(true);amount.setText(saved==null?"1,00":saved.getString("amount","1,00"));add(converter,amount,6);
         resultText=label("—",31,MINT,true);resultText.setAutoSizeTextTypeUniformWithConfiguration(18,31,1,android.util.TypedValue.COMPLEX_UNIT_SP);resultText.setMaxLines(1);add(converter,resultText,13);
         convertNote=label("A conversão depende de uma cotação válida.",12,MUTED,false);add(converter,convertNote,4);
         amount.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int c){updateConversion();}public void afterTextChanged(Editable e){}});
-        LinearLayout overview=panel(content,CARD);overviewContainer=overview;add(overview,label("Moedas × real",17,TEXT,true),0);
+        LinearLayout overview=panel(compareSection,CARD);overviewContainer=overview;add(overview,label("Moedas × real",17,TEXT,true),0);
         add(overview,label("Mercado · valor e horário da fonte",11,MUTED,false),3);
         Button compare=button("Comparar moedas");compare.setTextSize(12);compare.setMinHeight(dp(38));compare.setMinimumHeight(dp(38));compare.setPadding(dp(10),0,dp(10),0);compare.setOnClickListener(v->chooseComparison());add(overview,compare,7);
         overviewList=column();add(overview,overviewList,4);
@@ -176,17 +203,17 @@ public final class MainActivity extends Activity {
             LinearLayout currencyItem=column();currencyItem.setPadding(dp(2),dp(7),dp(2),dp(7));LinearLayout currencyRow=row();
             LinearLayout description=column();TextView currencyTitle=label((Preferences.favorite(this,item)?"★ ":"")+item.toString(),12,TEXT,true);currencyTitle.setMaxLines(1);currencyTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);add(description,currencyTitle,0);overviewTitles.put(item,currencyTitle);overviewRows.put(item,currencyItem);TextView price=label("Aguardando a fonte",14,TEXT,true),change=label("Sem variação disponível",10,MUTED,false);price.setMaxLines(1);price.setAutoSizeTextTypeUniformWithConfiguration(11,14,1,android.util.TypedValue.COMPLEX_UNIT_SP);
             overviewPrices.put(item,price);overviewChanges.put(item,change);add(description,change,2);currencyRow.addView(description,new LinearLayout.LayoutParams(0,-2,1));LinearLayout value=column();value.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);value.addView(price);currencyRow.addView(value,new LinearLayout.LayoutParams(-2,-2));currencyItem.addView(currencyRow,new LinearLayout.LayoutParams(-1,-2));View divider=new View(this);divider.setBackgroundColor(light?0xFFDDE6E9:0xFF263B45);LinearLayout.LayoutParams dividerLp=new LinearLayout.LayoutParams(-1,dp(1));dividerLp.topMargin=dp(7);currencyItem.addView(divider,dividerLp);add(overviewList,currencyItem,0);
-            currencyItem.setFocusable(true);currencyItem.setClickable(true);currencyItem.setOnClickListener(v->{selector.setSelection(item.ordinal());mainScroll.smoothScrollTo(0,0);});
+            currencyItem.setFocusable(true);currencyItem.setClickable(true);currencyItem.setOnClickListener(v->{selector.setSelection(item.ordinal());showCurrencySection("Cotação");mainScroll.smoothScrollTo(0,0);});
         }
         overviewMore=button("Ver todas as moedas");overviewMore.setTextSize(12);overviewMore.setMinHeight(dp(38));overviewMore.setMinimumHeight(dp(38));overviewMore.setOnClickListener(v->{overviewExpanded=!overviewExpanded;updateOverviewVisibility();});add(overviewList,overviewMore,2);updateOverviewVisibility();
-        LinearLayout tourismRow=column();tourismRow.setPadding(dp(12),dp(14),dp(12),dp(14));tourismRow.setBackground(shape(light?0xFFF0F5F7:0xFF192F3B,14));add(tourismRow,label("USD Turismo • dólar para viagem",14,TEXT,true),0);tourismOverviewPrice=label("Aguardando fonte de mercado",14,TEXT,false);tourismOverviewDate=label("Cotação separada da PTAX",11,MUTED,false);add(tourismRow,tourismOverviewPrice,5);add(tourismRow,tourismOverviewDate,4);add(overview,tourismRow,10);tourismRow.setOnClickListener(v->{selector.setSelection(FxCurrency.USD.ordinal());selectUsdMode(true);mainScroll.smoothScrollTo(0,0);});
-        LinearLayout stocksPanel=panel(content,CARD);add(stocksPanel,label("Bolsa de valores",19,TEXT,true),0);
+        LinearLayout tourismRow=column();tourismRow.setPadding(dp(12),dp(14),dp(12),dp(14));tourismRow.setBackground(shape(light?0xFFF0F5F7:0xFF192F3B,14));add(tourismRow,label("USD Turismo • dólar para viagem",14,TEXT,true),0);tourismOverviewPrice=label("Aguardando fonte de mercado",14,TEXT,false);tourismOverviewDate=label("Cotação separada da PTAX",11,MUTED,false);add(tourismRow,tourismOverviewPrice,5);add(tourismRow,tourismOverviewDate,4);add(overview,tourismRow,10);tourismRow.setOnClickListener(v->{selector.setSelection(FxCurrency.USD.ordinal());showCurrencySection("Cotação");selectUsdMode(true);mainScroll.smoothScrollTo(0,0);});
+        LinearLayout stocksPanel=panel(marketsSection,CARD);add(stocksPanel,label("Bolsa de valores",19,TEXT,true),0);
         add(stocksPanel,label("Ibovespa em pontos; ações em R$. Fonte: brapi; planos gratuitos podem atrasar e a exibição depende dos termos do provedor. Dados antigos recebem aviso. Fora do pregão, pode permanecer a última publicação.",12,MUTED,false),7);
         stocksStatus=label("Aguardando consulta da bolsa",12,MUTED,false);add(stocksPanel,stocksStatus,10);
         String[] symbols={"^BVSP","PETR4","VALE3","ITUB4","MGLU3"};String[] stockNames={"Ibovespa (IBOV)","Petrobras PN","Vale ON","Itaú Unibanco PN","Magazine Luiza ON"};
         for(int i=0;i<symbols.length;i++){String symbol=symbols[i];LinearLayout item=column();item.setPadding(dp(12),dp(13),dp(12),dp(13));item.setBackground(shape(light?0xFFF0F5F7:0xFF192F3B,14));add(item,label(stockNames[i]+" · "+symbol,14,TEXT,true),0);TextView price=label("Aguardando cotação",16,TEXT,true),change=label("Fonte indisponível",11,MUTED,false);stockPrices.put(symbol,price);stockChanges.put(symbol,change);add(item,price,4);add(item,change,3);add(stocksPanel,item,8);}
         Button stocksConfig=button("Configurar servidor do Ibovespa");stocksConfig.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));add(stocksPanel,stocksConfig,11);
-        LinearLayout futuresPanel=panel(content,CARD);add(futuresPanel,label("B3  /  DERIVATIVOS",11,MINT,true),0);
+        LinearLayout futuresPanel=panel(marketsSection,CARD);add(futuresPanel,label("B3  /  DERIVATIVOS",11,MINT,true),0);
         add(futuresPanel,label("Mercado futuro",22,TEXT,true),5);
         add(futuresPanel,label("Contratos e vencimentos conforme calendário da B3.",12,MUTED,false),5);
         for(String base:new String[]{"WIN","DOL","WDO"}){
@@ -201,7 +228,7 @@ public final class MainActivity extends Activity {
         Button calendar=button("Ver calendário oficial da B3");calendar.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(FuturesContracts.CALENDAR_URL)));}catch(ActivityNotFoundException ex){new AlertDialog.Builder(this).setMessage(FuturesContracts.CALENDAR_URL).setPositiveButton("OK",null).show();}});add(futuresPanel,calendar,11);
         add(futuresPanel,label("Preços aguardam fonte autorizada. Não exibimos valores estimados.",11,MUTED,false),7);
         refreshFutures();
-        LinearLayout source=panel(content,light?0xFFE5EDEF:0xFF101E28);add(source,label("Fontes e atualização",18,TEXT,true),0);
+        LinearLayout source=panel(sourcesSection,light?0xFFE5EDEF:0xFF101E28);add(source,label("Fontes e atualização",18,TEXT,true),0);
         add(source,label("MOEDAS  ·  AwesomeAPI",11,MINT,true),15);
         add(source,label("Venda (ask) com horário da fonte. Dólar turismo tem cotação própria; preços podem atrasar.",12,MUTED,false),4);
         add(source,label("BOLSA  ·  brapi",11,MINT,true),14);
@@ -217,8 +244,8 @@ public final class MainActivity extends Activity {
         add(source,label("Cada widget guarda sua moeda. Atualização automática é solicitada a cada 30 min; o Android pode adiar. ↻ pede uma nova consulta, sujeita à conexão e ao agendador do Android.",12,MUTED,false),9);
         Button sourceButton=button("Abrir dados PTAX na fonte ↗");sourceButton.setOnClickListener(v->openSource());add(source,sourceButton,14);
         Button marketSource=button("Abrir fonte de mercado ↗");marketSource.setOnClickListener(v->{try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(MarketClient.INFO)));}catch(ActivityNotFoundException ex){new AlertDialog.Builder(this).setMessage(MarketClient.INFO).setPositiveButton("OK",null).show();}});add(source,marketSource,8);
-        add(content,label("Sem anúncios · Sem rastreadores\nCâmbio Claro 1.7.9 · Aplicativo independente",11,MUTED,false),16);
-        setContentView(scroll);readCache();market=MarketStore.read(this);updateDisplay();load();
+        add(content,label("Sem anúncios · Sem rastreadores\nCâmbio Claro 1.8.0 · Aplicativo independente",11,MUTED,false),16);
+        setContentView(scroll);readCache();market=MarketStore.read(this);updateDisplay();load();if(marketPeriodDays>1)loadDailyPeriod(currency,marketPeriodDays);
     }
     private void readCache(){
         rates=RateStore.read(this,currency);fetchedAt=rates.isEmpty()?0:prefs.getLong("fetched",0);
@@ -276,30 +303,42 @@ public final class MainActivity extends Activity {
             catch(Exception ex){Diagnostics.record(getApplicationContext(),"histórico de mercado "+requested.name(),ex);runOnUiThread(()->{historyLoading.remove(requested);if(!isDestroyed()&&currency==requested){updateIntraday();intradayStatus.append(" · consulta falhou; mostrando dados salvos");}});}
         });
     }
+    private void loadDailyPeriod(FxCurrency requested,int observations){
+        if(tourismMode){updateIntraday();intradayStatus.setText("Histórico diário de USD turismo indisponível nesta fonte. Nenhum valor comercial será usado como substituto.");return;}
+        updateIntraday();String key=requested.name()+":"+observations;List<MarketHistory.Point> cached=MarketArchive.dailyPeriod(this,requested,observations);
+        if(!cached.isEmpty()){long checked=getSharedPreferences("market_daily_v1",MODE_PRIVATE).getLong(key,0);if(System.currentTimeMillis()-checked<historyRefreshInterval())return;}
+        if(!dailyHistoryLoading.add(key))return;intradayStatus.setText("Consultando fechamentos diários reais na AwesomeAPI…");
+        worker.execute(()->{
+            String error=null;
+            try{int requestDays=observations==365?360:Math.min(360,observations*2+7);String raw=MarketHistory.fetchDaily(requested,requestDays);List<MarketHistory.Point> points=MarketHistory.parseDaily(raw,requested,Instant.now());if(points.isEmpty())throw new java.io.IOException("A fonte não publicou fechamentos para o período.");MarketArchive.mergeDaily(this,requested,points);getSharedPreferences("market_daily_v1",MODE_PRIVATE).edit().putLong(key,System.currentTimeMillis()).apply();}
+            catch(Exception failure){Diagnostics.record(getApplicationContext(),"histórico diário "+requested.name()+" "+observations,failure);error="Consulta falhou";}
+            final String failure=error;runOnUiThread(()->{dailyHistoryLoading.remove(key);if(!isDestroyed()&&currency==requested&&marketPeriodDays==observations){updateIntraday();if(failure!=null){intradayStatus.append(cached.isEmpty()?" · sem dados salvos para mostrar":" · mostrando somente fechamentos reais salvos anteriormente");}}});
+        });
+    }
     private void updateIntraday(){
         for(Map.Entry<Integer,Button> entry:marketPeriods.entrySet()){boolean active=entry.getKey()==marketPeriodDays;entry.getValue().setBackground(shape(active?MINT:(light?0xFFE1ECEF:0xFF203641),12));entry.getValue().setTextColor(active?(light?0xFFFFFFFF:BG):MINT);}
-        TreeMap<Instant,MarketHistory.Point> published=new TreeMap<>();List<MarketHistory.Point> source=marketPeriodDays==1?(tourismMode?Tourism.readHistory(this):MarketHistory.read(this,currency)):(tourismMode?Collections.emptyList():MarketArchive.period(this,currency,marketPeriodDays));for(MarketHistory.Point p:source)published.put(p.at,p);
-        MarketClient.Quote snapshot=tourismMode?Tourism.readLatest(this):MarketStore.snapshot(this,currency);if(snapshot!=null&&!tourismMode&&(marketPeriodDays>1||snapshot.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today())))published.put(snapshot.at,new MarketHistory.Point(snapshot.at,snapshot.ask));
-        List<MarketHistory.Point> points=new ArrayList<>(published.values());currentIntradayPoints=points;intradayChart.setPoints(points,marketPeriodDays==1);updateIntradayMovements(points,points.isEmpty()?-1:points.size()-1);
+        TreeMap<Instant,MarketHistory.Point> published=new TreeMap<>();List<MarketHistory.Point> source=marketPeriodDays==1?(tourismMode?Tourism.readHistory(this):MarketHistory.read(this,currency)):(tourismMode?Collections.emptyList():MarketArchive.dailyPeriod(this,currency,marketPeriodDays==365?360:marketPeriodDays));for(MarketHistory.Point p:source)published.put(p.at,p);
+        MarketClient.Quote snapshot=tourismMode?Tourism.readLatest(this):MarketStore.snapshot(this,currency);if(snapshot!=null&&marketPeriodDays==1&&(tourismMode||snapshot.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today())))published.put(snapshot.at,new MarketHistory.Point(snapshot.at,snapshot.ask));
+        List<MarketHistory.Point> points=new ArrayList<>(published.values());currentIntradayPoints=points;intradayChart.setPoints(points,marketPeriodDays==1,marketPeriodDays);updateIntradayMovements(points,points.isEmpty()?-1:points.size()-1);
         String period=marketPeriodDays==1?"1 dia":marketPeriodDays==5?"5 dias":marketPeriodDays==30?"1 mês":"1 ano";
-        if(points.isEmpty()){intradayStatus.setText(tourismMode&&marketPeriodDays>1?"Histórico longo de USD turismo ainda indisponível. O gráfico não usa cotações comerciais como substituto.":"Sem observações reais no período de "+period+". O histórico local começa a ser coletado após atualizar o app.");return;}
+        if(points.isEmpty()){intradayStatus.setText(tourismMode&&marketPeriodDays>1?"Histórico diário de USD turismo indisponível na fonte consultada.":"Sem observações reais no período de "+period+". Consulte a fonte ou tente novamente.");return;}
         DateTimeFormatter clock=DateTimeFormatter.ofPattern("dd/MM HH:mm",br);String first=points.get(0).at.atZone(BcbClient.ZONE).format(clock),last=points.get(points.size()-1).at.atZone(BcbClient.ZONE).format(clock);
-        String heldUntil=marketPeriodDays==1&&Instant.now().isAfter(points.get(points.size()-1).at)?" · último valor mantido até "+java.time.LocalTime.now(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("HH:mm",br))+" (sem nova publicação)":"";
-        intradayStatus.setText((tourismMode?"USD/BRLT":currency.name()+"/BRL")+" · "+period+" · "+points.size()+" observações reais · "+first+"–"+last+" (Brasília)"+(marketPeriodDays>1?" · histórico deste aparelho":"")+heldUntil+(points.size()<2?" · aguardando outro ponto real":""));
+        String heldUntil=marketPeriodDays==1&&Instant.now().isAfter(points.get(points.size()-1).at)?" · sem publicação nova desde "+points.get(points.size()-1).at.atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("HH:mm",br)):"";
+        intradayStatus.setText((tourismMode?"USD/BRLT":currency.name()+"/BRL")+" · "+period+" · "+points.size()+" "+(marketPeriodDays==1?"observações intradiárias":"fechamentos diários reais")+" · "+first+"–"+last+" (Brasília)"+heldUntil+(points.size()<2?" · aguardando outro ponto real":""));
     }
     private void updateIntradayMovements(List<MarketHistory.Point> points,int selected){
         if(intradayMovement==null||intradayChangesToggle==null||intradayChanges==null)return;
         if(points==null||points.isEmpty()){intradayMovement.setText("Sem publicação real para comparar.");intradayChangesToggle.setVisibility(View.GONE);intradayChanges.removeAllViews();return;}
         int index=selected>=0&&selected<points.size()?selected:points.size()-1;
-        intradayMovement.setText(IntradayMovement.summary(points,index));
+        intradayMovement.setText(IntradayMovement.summary(points,index,marketPeriodDays>1));
         int changes=Math.max(0,points.size()-1);boolean hasOlder=changes>6;intradayChangesToggle.setVisibility(hasOlder?View.VISIBLE:View.GONE);intradayChangesToggle.setText(intradayChangesExpanded?"Mostrar só as 6 mais recentes ↑":"Ver todas as "+changes+" alterações");
         intradayChanges.removeAllViews();
         add(intradayChanges,label("PUBLICAÇÕES E DIFERENÇAS",11,MUTED,true),2);
         int firstChange=intradayChangesExpanded?1:Math.max(1,points.size()-6);
-        MarketHistory.Point base=points.get(0);String baseTime=base.at.atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("HH:mm",br));TextView baseRow=label("BASE · "+baseTime+" · R$ "+IntradayMovement.value(base.ask)+" · sem comparação anterior",12,MUTED,true);baseRow.setPadding(dp(11),dp(9),dp(11),dp(9));baseRow.setBackground(shape(light?0xFFF0F5F6:0xFF172A34,10));add(intradayChanges,baseRow,5);
+        MarketHistory.Point base=points.get(0);String baseTime=base.at.atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern(marketPeriodDays==1?"HH:mm":"dd/MM HH:mm",br));TextView baseRow=label("BASE · "+baseTime+" · R$ "+IntradayMovement.value(base.ask)+" · sem comparação anterior",12,MUTED,true);baseRow.setPadding(dp(11),dp(9),dp(11),dp(9));baseRow.setBackground(shape(light?0xFFF0F5F6:0xFF172A34,10));add(intradayChanges,baseRow,5);
         for(int i=firstChange;i<points.size();i++){
             int direction=IntradayMovement.direction(points,i);int color=direction>0?MINT:direction<0?(light?0xFFB42318:0xFFF28B82):MUTED;int surface=direction>0?(light?0xFFE5F3EE:0xFF173931):direction<0?(light?0xFFFCEAE8:0xFF3C2528):(light?0xFFF0F5F6:0xFF172A34);
-            TextView item=label(IntradayMovement.summary(points,i),12,color,true);item.setPadding(dp(11),dp(9),dp(11),dp(9));item.setBackground(shape(surface,10));add(intradayChanges,item,5);
+            TextView item=label(IntradayMovement.summary(points,i,marketPeriodDays>1),12,color,true);item.setPadding(dp(11),dp(9),dp(11),dp(9));item.setBackground(shape(surface,10));add(intradayChanges,item,5);
         }
         if(!intradayChangesExpanded&&hasOlder)add(intradayChanges,label("Exibindo as seis variações mais recentes. Abra o histórico completo para consultar as anteriores.",10,MUTED,false),4);
     }
@@ -384,13 +423,27 @@ public final class MainActivity extends Activity {
         for(FxCurrency item:overviewPrices.keySet()){
             MarketClient.Quote quote=MarketStore.latest(this,item);
             List<Rate> data=RateStore.read(this,item);TextView price=overviewPrices.get(item),change=overviewChanges.get(item);
-            if(quote!=null){price.setText(money(quote.ask,4)+" por "+item.name()+" 1");ZonedDateTime at=quote.at.atZone(BcbClient.ZONE);change.setText("Mercado · "+at.format(DateTimeFormatter.ofPattern("dd/MM HH:mm",br))+" · "+(at.toLocalDate().equals(BcbClient.today())?"hoje":"última disponível"));change.setTextColor(MUTED);continue;}
+            if(quote!=null){price.setText(money(quote.ask,4)+" por "+item.name()+" 1");List<MarketHistory.Point> observations=marketTodayPoints(item,quote);change.setText(marketVariation(quote,observations));change.setTextColor(marketVariationColor(observations,quote));continue;}
             if(data.isEmpty()){price.setText(overviewErrors.containsKey(item)?"Fonte indisponível • tente atualizar":"Aguardando dados do Banco Central");change.setText("Sem cotação válida para comparar");change.setTextColor(MUTED);continue;}
             Rate latest=data.get(data.size()-1);price.setText(money(latest.sell,4)+" por "+item.name()+" 1");
             String detail="PTAX · publicado em "+latest.at.format(dayFormat);
             if(data.size()>1){BigDecimal value=Rate.variation(data.get(data.size()-2).sell,latest.sell),shown=value.setScale(2,java.math.RoundingMode.HALF_UP);String direction=shown.signum()>0?"▲ Alta ":shown.signum()<0?"▼ Baixa ":"● Estável ";change.setText(direction+percent(value)+" · "+detail+(overviewErrors.containsKey(item)?"\nAtualização falhou • dado salvo":""));change.setTextColor(shown.signum()>0?MINT:shown.signum()<0?(light?0xFFA33122:0xFFF2B5A9):MUTED);}
             else{change.setText(detail+" · sem publicação anterior");change.setTextColor(MUTED);}
         }
+    }
+    private List<MarketHistory.Point> marketTodayPoints(FxCurrency item,MarketClient.Quote quote){
+        TreeMap<Instant,MarketHistory.Point> observations=new TreeMap<>();for(MarketHistory.Point point:MarketArchive.period(this,item,1))if(point.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today()))observations.put(point.at,point);
+        if(quote.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today()))observations.put(quote.at,new MarketHistory.Point(quote.at,quote.ask));return new ArrayList<>(observations.values());
+    }
+    private String marketVariation(MarketClient.Quote quote,List<MarketHistory.Point> observations){
+        ZonedDateTime currentAt=quote.at.atZone(BcbClient.ZONE);String stamp=currentAt.format(DateTimeFormatter.ofPattern("dd/MM HH:mm",br));
+        if(!currentAt.toLocalDate().equals(BcbClient.today()))return "Mercado · última publicação "+stamp+" · sem observação de hoje";
+        if(observations.size()<2)return "Mercado · "+stamp+" · variação indisponível: aguardando outra publicação";
+        return "Mercado · "+IntradayMovement.summary(observations,observations.size()-1)+" · publicação "+stamp;
+    }
+    private int marketVariationColor(List<MarketHistory.Point> observations,MarketClient.Quote quote){
+        if(!quote.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today()))return AMBER;
+        return observations.size()<2?MUTED:IntradayMovement.direction(observations,observations.size()-1)>0?MINT:IntradayMovement.direction(observations,observations.size()-1)<0?(light?0xFFA33122:0xFFF2B5A9):MUTED;
     }
     private void refreshFutures(){
         LocalDate today=BcbClient.today();
@@ -457,10 +510,10 @@ public final class MainActivity extends Activity {
         ScrollView sc=new ScrollView(this);sc.addView(text);new AlertDialog.Builder(this).setTitle("Publicações do Banco Central").setView(sc).setPositiveButton("Fechar",null).show();
     }
     private void openSource(){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(BcbClient.url(BcbClient.today(),currency))));}catch(ActivityNotFoundException ex){new AlertDialog.Builder(this).setTitle("Fonte oficial").setMessage(BcbClient.INFO).setPositiveButton("OK",null).show();}}
-    @Override public void onSaveInstanceState(Bundle b){super.onSaveInstanceState(b);b.putInt("days",days);b.putBoolean("ptaxOpen",ptaxOpen);b.putString("amount",amount.getText().toString());}
+    @Override public void onSaveInstanceState(Bundle b){super.onSaveInstanceState(b);b.putInt("days",days);b.putInt("marketPeriodDays",marketPeriodDays);b.putString("section",selectedSection);b.putString("currencySection",selectedCurrencySection);b.putBoolean("ptaxOpen",ptaxOpen);b.putString("amount",amount.getText().toString());}
     @Override public void onDestroy(){generation++;autoHandler.removeCallbacks(autoRefresh);worker.shutdownNow();super.onDestroy();}
     @Override public void onPause(){foreground=false;autoHandler.removeCallbacks(autoRefresh);super.onPause();}
-    @Override public void onResume(){super.onResume();if(themeMode!=null&&(!themeMode.equals(Preferences.prefs(this).getString("theme","system"))||light!=Preferences.light(this))){recreate();return;}CambioWidget.syncAlertSchedule(this);refreshFutures();foreground=true;autoHandler.removeCallbacks(autoRefresh);autoHandler.postDelayed(autoRefresh,foregroundRefreshInterval());if(rateText!=null&&!loading){readCache();market=MarketStore.read(this);confirmed=false;updateDisplay();if(fetchedAt==0||System.currentTimeMillis()-fetchedAt>FULL_REFRESH_MS)load();else{lastFullRefresh=System.currentTimeMillis();loadMarket(false);if(System.currentTimeMillis()-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=System.currentTimeMillis();}if(System.currentTimeMillis()-lastStocksRefresh>=foregroundRefreshInterval()*5){loadStocks();lastStocksRefresh=System.currentTimeMillis();}statusText.setText("Consulta PTAX salva em "+Instant.ofEpochMilli(fetchedAt).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm",br))+" (Brasília)");statusText.setTextColor(MUTED);}}refreshOverview();}
+    @Override public void onResume(){super.onResume();if(themeMode!=null&&(!themeMode.equals(Preferences.prefs(this).getString("theme","system"))||light!=Preferences.light(this))){recreate();return;}CambioWidget.syncAlertSchedule(this);refreshFutures();foreground=true;autoHandler.removeCallbacks(autoRefresh);autoHandler.postDelayed(autoRefresh,foregroundRefreshInterval());if(rateText!=null&&!loading){readCache();market=MarketStore.read(this);confirmed=false;updateDisplay();if(fetchedAt==0||System.currentTimeMillis()-fetchedAt>FULL_REFRESH_MS)load();else{lastFullRefresh=System.currentTimeMillis();loadMarket(false);if(System.currentTimeMillis()-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=System.currentTimeMillis();}if(System.currentTimeMillis()-lastStocksRefresh>=foregroundRefreshInterval()*5){loadStocks();lastStocksRefresh=System.currentTimeMillis();}statusText.setText("Consulta PTAX salva em "+Instant.ofEpochMilli(fetchedAt).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm",br))+" (Brasília)");statusText.setTextColor(MUTED);}}refreshOverview();if(marketPeriodDays>1)loadDailyPeriod(currency,marketPeriodDays);}
 
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);String code=intent.getStringExtra("currency");boolean hasTourism=intent.hasExtra("tourism"),tourism=intent.getBooleanExtra("tourism",false);intent.removeExtra("currency");intent.removeExtra("tourism");if(code!=null)try{selector.setSelection(FxCurrency.valueOf(code).ordinal());if(hasTourism)selectUsdMode(tourism);mainScroll.smoothScrollTo(0,0);}catch(IllegalArgumentException ignored){}}
     private void updateFavorite(){if(favoriteButton!=null)favoriteButton.setText(Preferences.favorite(this,currency)?"★ Remover "+currency.name()+" das favoritas":"☆ Favoritar "+currency.name());}

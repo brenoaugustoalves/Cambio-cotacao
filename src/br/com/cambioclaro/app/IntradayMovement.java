@@ -11,6 +11,7 @@ import java.util.Locale;
 public final class IntradayMovement {
     private static final Locale BR=new Locale("pt","BR");
     private static final DateTimeFormatter CLOCK=DateTimeFormatter.ofPattern("HH:mm",BR);
+    private static final DateTimeFormatter DATE_CLOCK=DateTimeFormatter.ofPattern("dd/MM HH:mm",BR);
     private IntradayMovement(){}
 
     public static BigDecimal absoluteDelta(MarketHistory.Point previous,MarketHistory.Point current){
@@ -24,17 +25,20 @@ public final class IntradayMovement {
     }
 
     public static String summary(List<MarketHistory.Point> points,int index){
+        return summary(points,index,false);
+    }
+    public static String summary(List<MarketHistory.Point> points,int index,boolean includeDate){
         if(points==null||points.isEmpty()||index<0||index>=points.size())return "Sem publicação para comparar.";
         MarketHistory.Point current=points.get(index);
-        String time=current.at.atZone(BcbClient.ZONE).format(CLOCK);
-        if(index==0)return "Base do dia · "+time+" · R$ "+value(current.ask)+" · variação indisponível sem publicação anterior.";
+        String time=current.at.atZone(BcbClient.ZONE).format(includeDate?DATE_CLOCK:CLOCK);
+        if(index==0)return "Base do período · "+time+" · R$ "+value(current.ask)+" · variação indisponível sem publicação anterior.";
         MarketHistory.Point previous=points.get(index-1);
         BigDecimal delta=absoluteDelta(previous,current),percent=percentDelta(previous,current);
         String direction=delta.signum()>0?"Subiu":delta.signum()<0?"Caiu":"Ficou estável";
         String sign=delta.signum()>0?"+":delta.signum()<0?"−":"";
         String pctSign=percent.signum()>0?"+":percent.signum()<0?"−":"";
         String amount=sign.isEmpty()?"R$ "+value(delta.abs()):sign+"R$ "+value(delta.abs());
-        return time+" · "+direction+" "+amount+" ("+pctSign+value(percent.abs())+"%) desde "+previous.at.atZone(BcbClient.ZONE).format(CLOCK)+" · cotação R$ "+value(current.ask);
+        return time+" · "+direction+" "+amount+" ("+pctSign+value(percent.abs())+"%) desde "+previous.at.atZone(BcbClient.ZONE).format(includeDate?DATE_CLOCK:CLOCK)+" · cotação R$ "+value(current.ask);
     }
 
     public static int direction(List<MarketHistory.Point> points,int index){

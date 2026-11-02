@@ -10,7 +10,7 @@ run([BT/'aapt2.exe','link','--proto-format','-o',B/'proto.apk','--manifest',ROOT
 with zipfile.ZipFile(B/'proto.apk') as src,zipfile.ZipFile(B/'base-module.zip','w',zipfile.ZIP_DEFLATED) as out:
     for info in src.infolist():out.writestr('manifest/AndroidManifest.xml' if info.filename=='AndroidManifest.xml' else info.filename,src.read(info.filename))
     for dex in (B/'dex').glob('*.dex'):out.write(dex,'dex/'+dex.name)
-aab=B/'CambioClaro-1.7.9.aab'
+aab=B/'CambioClaro-1.8.0.aab'
 run([JDK/'bin/java.exe','-jar',TOOL,'build-bundle','--modules='+str(B/'base-module.zip'),'--output='+str(aab),'--overwrite'])
 run([JDK/'bin/jarsigner.exe','-keystore',ROOT/'.signing/cambio-claro.jks','-storepass:file',ROOT/'.signing/password.txt','-sigalg','SHA256withRSA','-digestalg','SHA-256',aab,'cambio-claro'])
 run([JDK/'bin/jarsigner.exe','-verify',aab])

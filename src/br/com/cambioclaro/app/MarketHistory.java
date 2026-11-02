@@ -18,17 +18,24 @@ public final class MarketHistory {
         Point(Instant at,BigDecimal ask){this.at=at;this.ask=ask;}
     }
     public static String url(FxCurrency currency){if(currency==null)throw new IllegalArgumentException("Moeda obrigatória");return "https://economia.awesomeapi.com.br/"+currency.name()+"-BRL/100";}
+    public static String dailyUrl(FxCurrency currency,int days){if(currency==null||days<1||days>360)throw new IllegalArgumentException("Moeda ou período inválido");return "https://economia.awesomeapi.com.br/json/daily/"+currency.name()+"-BRL/"+days;}
     public static String fetch(FxCurrency currency)throws IOException{
         HttpsURLConnection c=(HttpsURLConnection)new URL(url(currency)).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(20000);c.setInstanceFollowRedirects(false);c.setRequestProperty("Accept","application/json");
         try{if(c.getResponseCode()!=200)throw new IOException("Histórico de mercado indisponível: HTTP "+c.getResponseCode());ByteArrayOutputStream out=new ByteArrayOutputStream();try(InputStream in=c.getInputStream()){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1){if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Consulta cancelada");if(out.size()+n>131072)throw new IOException("Histórico de mercado maior que o esperado");out.write(b,0,n);}}return new String(out.toByteArray(),StandardCharsets.UTF_8);}finally{c.disconnect();}
     }
+    public static String fetchDaily(FxCurrency currency,int days)throws IOException{
+        HttpsURLConnection c=(HttpsURLConnection)new URL(dailyUrl(currency,days)).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(20000);c.setInstanceFollowRedirects(false);c.setRequestProperty("Accept","application/json");
+        try{if(c.getResponseCode()!=200)throw new IOException("Fechamentos diários indisponíveis: HTTP "+c.getResponseCode());ByteArrayOutputStream out=new ByteArrayOutputStream();try(InputStream in=c.getInputStream()){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1){if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Consulta cancelada");if(out.size()+n>512000)throw new IOException("Histórico diário excedeu o limite");out.write(b,0,n);}}return new String(out.toByteArray(),StandardCharsets.UTF_8);}finally{c.disconnect();}
+    }
     public static List<Point> parse(String raw,FxCurrency currency,LocalDate day,Instant now)throws Exception{
-        return parseRange(raw,currency,day,now);
+        return parseRange(raw,currency,day,now,100);
     }
     /** All timestamped observations returned by the provider, without filling gaps. */
-    public static List<Point> parseAll(String raw,FxCurrency currency,Instant now)throws Exception{return parseRange(raw,currency,null,now);}
-    private static List<Point> parseRange(String raw,FxCurrency currency,LocalDate day,Instant now)throws Exception{
-        if(raw==null||raw.length()>131072)throw new IOException("Histórico fora do limite");MarketClient.checkDepth(raw);JSONArray rows=new JSONArray(raw);if(rows.length()>100)throw new IOException("Histórico acima de 100 pontos da fonte");TreeMap<Instant,Point> result=new TreeMap<>();
+    public static List<Point> parseAll(String raw,FxCurrency currency,Instant now)throws Exception{return parseRange(raw,currency,null,now,100);}
+    /** Daily provider closes, kept separate from one-minute observations. */
+    public static List<Point> parseDaily(String raw,FxCurrency currency,Instant now)throws Exception{return parseRange(raw,currency,null,now,360);}
+    private static List<Point> parseRange(String raw,FxCurrency currency,LocalDate day,Instant now,int maxRows)throws Exception{
+        int maxChars=maxRows>100?512000:131072;if(raw==null||raw.length()>maxChars)throw new IOException("Histórico fora do limite");MarketClient.checkDepth(raw);JSONArray rows=new JSONArray(raw);if(rows.length()>maxRows)throw new IOException("Histórico acima do limite da fonte");TreeMap<Instant,Point> result=new TreeMap<>();
         for(int i=0;i<rows.length();i++){JSONObject item=rows.getJSONObject(i);if((i==0&&(!item.has("code")||!item.has("codein")))||(item.has("code")&&!currency.name().equals(item.getString("code")))||(item.has("codein")&&!"BRL".equals(item.getString("codein"))))throw new IOException("Par inesperado no histórico");String price=item.getString("ask"),time=item.getString("timestamp");if(!price.matches("[0-9]{1,8}(\\.[0-9]{1,8})?")||!time.matches("[0-9]{10}([0-9]{3})?"))throw new IOException("Ponto de mercado inválido");BigDecimal ask=new BigDecimal(price);if(ask.signum()<=0||ask.compareTo(new BigDecimal("1000000"))>0)throw new IOException("Preço inválido");Instant at=time.length()==13?Instant.ofEpochMilli(Long.parseLong(time)):Instant.ofEpochSecond(Long.parseLong(time));if(at.isAfter(now.plusSeconds(300)))throw new IOException("Ponto futuro");if(day==null||at.atZone(BcbClient.ZONE).toLocalDate().equals(day))result.put(at,new Point(at,ask));}
         return Collections.unmodifiableList(new ArrayList<>(result.values()));
     }

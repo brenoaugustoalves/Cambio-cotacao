@@ -1,0 +1,83 @@
+name: Build and publish signed APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: sdkmanager "platform-tools" "platforms;android-37" "build-tools;36.0.0"
+
+      - name: Restore signing key from Actions secrets
+        env:
+          CHANGE_SIGNING_KEYSTORE_BASE64: ${{ secrets.CAMBIO_SIGNING_KEYSTORE_BASE64 }}
+          CHANGE_SIGNING_PASSWORD: ${{ secrets.CAMBIO_SIGNING_PASSWORD }}
+        run: |
+          python - <<'PY'
+          import base64, os
+          from pathlib import Path
+          encoded = os.environ.get('CHANGE_SIGNING_KEYSTORE_BASE64', '')
+          password = os.environ.get('CHANGE_SIGNING_PASSWORD', '')
+          if not encoded or not password:
+              raise SystemExit('Configure CAMBIO_SIGNING_KEYSTORE_BASE64 e CAMBIO_SIGNING_PASSWORD em GitHub Actions Secrets.')
+          signing = Path('.signing')
+          signing.mkdir(mode=0o700, exist_ok=True)
+          key = base64.b64decode(encoded, validate=True)
+          if len(key) > 1024 * 1024:
+              raise SystemExit('Keystore maior que o limite esperado.')
+          (signing / 'cambio-claro.jks').write_bytes(key)
+          (signing / 'password.txt').write_text(password, encoding='utf-8')
+          PY
+
+      - name: Verify tag and manifest version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os, xml.etree.ElementTree as ET
+          manifest = ET.parse('AndroidManifest.xml').getroot()
+          version = manifest.attrib['{http://schemas.android.com/apk/res/android}versionName']
+          if os.environ['RELEASE_TAG'] != 'v' + version:
+              raise SystemExit(f"Tag precisa ser v{version} para corresponder ao APK.")
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env:
+              env.write(f'RELEASE_VERSION={version}\n')
+          PY
+
+      - name: Run domain checks and build signed APK
+        run: |
+          python verify.py
+          test -s "build/CambioClaro-${RELEASE_VERSION}.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "build/CambioClaro-${RELEASE_VERSION}.apk"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "build/CambioClaro-${RELEASE_VERSION}.apk#Câmbio Claro ${RELEASE_VERSION} para Android" \
+            --title "Câmbio Claro ${RELEASE_VERSION}" \
+            --notes-file "RELEASE-${RELEASE_VERSION}.md"
+
+      - name: Remove signing material
+        if: always()
+        run: rm -rf .signing

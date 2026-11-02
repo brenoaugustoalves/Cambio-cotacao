@@ -1,32 +1,36 @@
-"""Package local 1.7.9 release artifacts without signing material or build output."""
+"""Package local 1.8.0 release artifacts without signing material or build output."""
 from pathlib import Path
 import hashlib
 import shutil
 import zipfile
+import xml.etree.ElementTree as ET
 
 root=Path(__file__).resolve().parent
+version=ET.parse(root/'AndroidManifest.xml').getroot().attrib['{http://schemas.android.com/apk/res/android}versionName']
 out=root.parent.parent/'outputs'
 out.mkdir(exist_ok=True)
 files={
-    root/'build/CambioClaro-1.7.9.apk':out/'CambioClaro-1.7.9.apk',
-    root/'RELEASE-1.7.9.md':out/'CambioClaro-1.7.9-notas.md',
-    root/'TESTE-MERCADO-1.7.9.md':out/'CambioClaro-1.7.9-testes.md',
+    root/f'build/CambioClaro-{version}.apk':out/f'CambioClaro-{version}.apk',
+    root/f'RELEASE-{version}.md':out/f'CambioClaro-{version}-notas.md',
+    root/f'TESTE-ARMAZENAMENTO-{version}.md':out/f'CambioClaro-{version}-testes.md',
 }
 for source,target in files.items():
     if not source.is_file():raise FileNotFoundError(source)
     shutil.copyfile(source,target)
 
-archive=out/'CambioClaro-1.7.9-codigo-fonte.zip'
+archive=out/f'CambioClaro-{version}-codigo-fonte.zip'
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as zipped:
     for path in root.rglob('*'):
         relative=path.relative_to(root)
-        if not path.is_file() or 'build' in relative.parts or '.signing' in relative.parts or '__pycache__' in relative.parts or path.suffix=='.pyc':continue
+        excluded_dirs={'.git','.signing','build','__pycache__','android-matrix-logs','android-resilience-logs','stress-results'}
+        if not path.is_file() or any(part in excluded_dirs for part in relative.parts) or path.suffix=='.pyc':continue
+        if relative.parts[:2]==('tests','evidence') or relative.parts[:2]==('tests','evidence-1.8.0'):continue
         if path.name.startswith('.') and path.name!='.gitignore':continue
         zipped.write(path,relative)
 with zipfile.ZipFile(archive) as zipped:
-    assert not any('signing' in name.lower() or name.startswith('build/') for name in zipped.namelist())
+    assert not any(any(marker in name.lower() for marker in ('.git/','.jks','.keystore','password.txt','.env','token','android-matrix-logs/','android-resilience-logs/','stress-results/')) or name.startswith('build/') for name in zipped.namelist())
 
-checksums=out/'CambioClaro-1.7.9-SHA256.txt'
+checksums=out/f'CambioClaro-{version}-SHA256.txt'
 with checksums.open('w',encoding='utf-8') as stream:
     for target in list(files.values())+[archive]:stream.write(hashlib.sha256(target.read_bytes()).hexdigest()+'  '+target.name+'\n')
 print('RELEASE_PACKAGED',archive)

@@ -1,4 +1,6 @@
-# Matriz Android — Câmbio Claro 1.6.1
+# Matriz Android — histórico de compatibilidade
+
+> Importante: os resultados abaixo são da versão 1.6.1, não da versão 1.8.0 deste conjunto de mudanças. A versão 1.8.0 foi revalidada nesta rodada no Android 14 (API 34), com 306 verificações instrumentadas. Não interprete esta matriz antiga como teste da versão atual.
 
 Suíte de domínio, instrumentação, componentes, widgets, cache/offline, carga local e verificações de segurança executada em emuladores. Cada API passou por 21 verificações de domínio e 190 verificações instrumentadas.
 
