@@ -38,6 +38,10 @@ MainActivity ──> ConvertCurrency ──> ConversionQuoteSource (porta)
 
 Para conversão comercial, uma cotação de mercado ausente permite usar a última PTAX salva, com essa origem indicada ao usuário. Para turismo, a falta de uma cotação própria resulta em indisponibilidade; não há substituição por comercial/PTAX. A conversão não consulta rede durante digitação e não estima taxas nem tarifas.
 
+### Política de atualização
+
+`MarketRefreshPolicy` define os intervalos sem depender do Android: atualização principal a cada 1 min em rede ilimitada ou 5 min em rede medida; economia de bateria eleva o intervalo mínimo a 15 min; histórico atualiza a cada 5 min ou 15 min, respectivamente; atualização completa vence em 12 h. `MainActivity` lê as condições do dispositivo e o `Handler` apenas agenda a próxima execução. O Android ainda pode adiar tarefas quando o app está em segundo plano.
+
 ### Apresentação
 
 A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia abre sua própria atividade. Dentro de Moedas, navegação adicional isola Cotação, Gráfico, PTAX, Converter e Outras. Assim, o cliente abre apenas o assunto escolhido e não precisa percorrer uma única página longa.
@@ -53,7 +57,7 @@ A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia
 
 ## Refatoração incremental restante
 
-O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Esta entrega foi uma iteração vertical: política da conversão, porta, adaptador, integração e testes foram concluídos como um só fluxo. Próximas iterações devem extrair a apresentação da conversão e a coordenação de atualização de mercado, mantendo testes instrumentados de navegação, cache e origem dos dados por etapa. Não se considera toda a aplicação migrada para Clean Architecture.
+O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Foram extraídas a política da conversão e a política pura de intervalos de atualização; os serviços Android continuam adaptadores de ambiente. Próximas iterações devem extrair a apresentação da conversão e a coordenação de consultas de mercado, mantendo testes instrumentados de navegação, cache e origem dos dados por etapa. Não se considera toda a aplicação migrada para Clean Architecture.
 
 ## Distribuição externa
 

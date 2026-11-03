@@ -17,6 +17,7 @@ import br.com.cambioclaro.app.conversion.data.AndroidConversionQuoteSource;
 import br.com.cambioclaro.app.conversion.domain.ConversionQuote;
 import br.com.cambioclaro.app.conversion.domain.ConversionRequest;
 import br.com.cambioclaro.app.conversion.domain.ConversionResult;
+import br.com.cambioclaro.app.market.application.MarketRefreshPolicy;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -36,9 +37,9 @@ public final class MainActivity extends Activity {
     private boolean converterTourismMode=false;
     private ConvertCurrency conversionUseCase;
     private boolean ptaxOpen=false;
+    public static final long AUTO_REFRESH_MS=MarketRefreshPolicy.foregroundInterval(false,false);
+    private static final long FULL_REFRESH_MS=MarketRefreshPolicy.FULL_REFRESH_INTERVAL_MS;
     private LinearLayout usdModes;private Button commercialButton,tourismButton;
-    public static final long AUTO_REFRESH_MS=60*1000L;
-    private static final long FULL_REFRESH_MS=12*60*60*1000L;
     private long lastHistoryRefresh=0,lastStocksRefresh=0;
     private long lastFullRefresh=0;
     private final Handler autoHandler=new Handler(Looper.getMainLooper());
@@ -75,7 +76,7 @@ public final class MainActivity extends Activity {
     private final Map<FxCurrency,View> overviewRows=new LinkedHashMap<>();
     private final Map<FxCurrency,TextView> overviewTitles=new LinkedHashMap<>();
     private ScrollView mainScroll;
-    private final Runnable autoRefresh=new Runnable(){public void run(){if(foreground){long now=System.currentTimeMillis(),interval=foregroundRefreshInterval();if(now-lastFullRefresh>=FULL_REFRESH_MS)load();else{loadMarket(true);if(now-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=now;}if(now-lastStocksRefresh>=interval*5){loadStocks();lastStocksRefresh=now;}}autoHandler.postDelayed(this,interval);}}};
+    private final Runnable autoRefresh=new Runnable(){public void run(){if(foreground){long now=System.currentTimeMillis(),interval=foregroundRefreshInterval();if(MarketRefreshPolicy.isFullRefreshDue(now,lastFullRefresh))load();else{loadMarket(true);if(now-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=now;}if(now-lastStocksRefresh>=interval*5){loadStocks();lastStocksRefresh=now;}}autoHandler.postDelayed(this,interval);}}};
     private List<Rate> rates=new ArrayList<>(),visible=new ArrayList<>();
     private long fetchedAt=0;
     private int days=30;
@@ -93,8 +94,9 @@ public final class MainActivity extends Activity {
     private DateTimeFormatter dayFormat=DateTimeFormatter.ofPattern("dd/MM/uuuu",br);
     private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private boolean meteredNetwork(){try{ConnectivityManager cm=getSystemService(ConnectivityManager.class);return cm!=null&&cm.isActiveNetworkMetered();}catch(Exception ignored){return true;}}
-    private long foregroundRefreshInterval(){long base=meteredNetwork()?5*60*1000L:60*1000L;try{PowerManager pm=getSystemService(PowerManager.class);if(pm!=null&&pm.isPowerSaveMode())return Math.max(base,15*60*1000L);}catch(Exception ignored){}return base;}
-    private long historyRefreshInterval(){return meteredNetwork()?15*60*1000L:5*60*1000L;}
+    private boolean powerSaveMode(){try{PowerManager pm=getSystemService(PowerManager.class);return pm!=null&&pm.isPowerSaveMode();}catch(Exception ignored){return false;}}
+    private long foregroundRefreshInterval(){return MarketRefreshPolicy.foregroundInterval(meteredNetwork(),powerSaveMode());}
+    private long historyRefreshInterval(){return MarketRefreshPolicy.historyInterval(meteredNetwork());}
     private GradientDrawable shape(int color,int radius){GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(dp(radius));return g;}
     private TextView label(String value,int size,int color,boolean bold){TextView v=new TextView(this);v.setText(value);v.setTextSize(size);v.setTextColor(color);v.setFontFeatureSettings("tnum");v.setTypeface(Typeface.create("sans-serif",bold?Typeface.BOLD:Typeface.NORMAL));v.setLineSpacing(dp(2),1);return v;}
     private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
