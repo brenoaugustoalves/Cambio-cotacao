@@ -30,14 +30,12 @@ public final class IntradayView extends View {
     public void setOnSelectionChangedListener(OnSelectionChangedListener listener){selectionListener=listener;notifySelection();}
     private void notifySelection(){if(selectionListener!=null&&selected>=0)selectionListener.onSelectionChanged(selected);}
     private String price(double n){NumberFormat f=NumberFormat.getNumberInstance(br);int places=n<.1?6:n<1?5:4;f.setMinimumFractionDigits(places);f.setMaximumFractionDigits(places);return f.format(n);}
-    private String clock(MarketHistory.Point p){return p.at.atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern(periodDays==1?"HH:mm":"dd/MM HH:mm",br));}
-    private String clock(long epochMillis){return Instant.ofEpochMilli(epochMillis).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("HH:mm",br));}
     private void label(Canvas c,String s,float x,float y,int color,float sp,Paint.Align align){paint.setShader(null);paint.setStyle(Paint.Style.FILL);paint.setColor(color);paint.setTextSize(sp*scaled);paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));paint.setTextAlign(align);c.drawText(s,x,y,paint);}
     private void line(Canvas c,float x1,float y1,float x2,float y2,int color,float stroke){paint.setShader(null);paint.setColor(color);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(dp(stroke));c.drawLine(x1,y1,x2,y2,paint);paint.setStyle(Paint.Style.FILL);}
     private void describe(){if(selected<0){setContentDescription("Gráfico sem observações publicadas no período.");return;}setContentDescription("Gráfico com "+points.size()+" observações reais. Ponto publicado "+(selected+1)+". "+IntradayMovement.summary(points,selected,periodDays>1)+" A linha reta liga duas observações reais; valores intermediários não são cotações publicadas.");}
     @Override protected void onDraw(Canvas c){super.onDraw(c);float w=getWidth(),h=getHeight();
         if(points.isEmpty()){label(c,"Sem publicações de hoje",w/2,h/2,muted,12,Paint.Align.CENTER);return;}
-        left=dp(75);right=w-dp(14);top=dp(38);bottom=h-dp(32);if(right<=left||bottom<=top)return;
+        left=dp(75);right=w-dp(14);top=dp(22);bottom=h-dp(32);if(right<=left||bottom<=top)return;
         double min=Double.MAX_VALUE,max=-Double.MAX_VALUE;for(MarketHistory.Point p:points){double v=p.ask.doubleValue();min=Math.min(min,v);max=Math.max(max,v);}double margin=Math.max((max-min)*.12,min*.0001);min-=margin;max+=margin;
         long first=points.get(0).at.toEpochMilli(),last=points.get(points.size()-1).at.toEpochMilli();long now=Instant.now().toEpochMilli();boolean observationsAreToday=extendCurrentDay&&points.get(points.size()-1).at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today());long end=observationsAreToday?Math.max(last,now):last;float spanX=right-left,spanY=bottom-top;long spanTime=Math.max(1,end-first);
         for(int i=0;i<4;i++){float y=top+spanY*i/3f;line(c,left,y,right,y,grid,1);label(c,price(max-(max-min)*i/3d),left-dp(7),y+dp(4),muted,10,Paint.Align.RIGHT);}
@@ -49,7 +47,6 @@ public final class IntradayView extends View {
         paint.setStyle(Paint.Style.FILL);
         for(int i=0;i<points.size();i++){int direction=IntradayMovement.direction(points,i);paint.setColor(direction>0?accent:direction<0?fall:steady);c.drawCircle(xs[i],ys[i],dp(points.size()>40?1.8f:2.6f),paint);}
         int idx=Math.max(0,Math.min(selected,points.size()-1));float sx=xs[idx],sy=ys[idx];line(c,sx,top,sx,bottom,muted,1);paint.setColor(accent);c.drawCircle(sx,sy,dp(5),paint);paint.setColor(ink);c.drawCircle(sx,sy,dp(2),paint);
-        MarketHistory.Point chosen=points.get(idx);label(c,"R$ "+price(chosen.ask.doubleValue())+" · "+clock(chosen),left,dp(23),ink,14,Paint.Align.LEFT);
         boolean dateAxis=spanTime>24L*60*60*1000;String axisPattern=dateAxis?"dd/MM":"HH:mm";label(c,axis(first,axisPattern),left,bottom+dp(22),muted,10,Paint.Align.LEFT);label(c,axis(first+spanTime/2,axisPattern),(left+right)/2,bottom+dp(22),muted,10,Paint.Align.CENTER);label(c,axis(end,axisPattern),right,bottom+dp(22),muted,10,Paint.Align.RIGHT);
     }
     private String axis(long millis,String pattern){return Instant.ofEpochMilli(millis).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern(pattern,br));}

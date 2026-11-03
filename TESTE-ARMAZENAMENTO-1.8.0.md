@@ -9,6 +9,7 @@
 - Regras do gráfico para conectar observações reais consecutivas mesmo quando há intervalos longos, sem criar preços intermediários; datas nos períodos longos e resumo de variação reutilizado por USD/EUR.
 - Navegação Moedas/Bolsa/Fontes, telas clara/escura, legibilidade e visibilidade de cada seção.
 - Seletor independente do conversor para todas as moedas suportadas e separação do USD turismo.
+- Navegação inferior, alvos de toque, estado da cotação e conteúdo da faixa de seleção do gráfico.
 - Parsing das Releases GitHub estáveis, URL oficial, tamanho, versão, rejeição de host falso/pré-release e componentes privados.
 - Regressão de alertas, widgets, caches, fontes, permissões e validações de segurança.
 
@@ -22,7 +23,7 @@ python verify.py --emulator emulator-5556
 
 - `python verify.py`: passou; APK compilado e assinado, 29 testes de domínio passaram.
 - `python verify.py --emulator emulator-5556`: passou; 308 verificações instrumentadas Android passaram em API 34.
-- Carga local dos parsers: 250 respostas de mercado, 25 PTAX e 25 SGS em 2.012 ms.
+- Carga local dos parsers: 250 respostas de mercado, 25 PTAX e 25 SGS em 2.039 ms.
 - Verificação de assinatura APK v2/v3 e alinhamento: passou.
 - O emulador foi usado como ambiente descartável; nenhum aparelho físico foi instalado nem atualizado por este teste.
 

@@ -16,13 +16,14 @@ No gráfico, `1D` consulta cotações intradiárias; `5D`, `1M` e `1A` consultam
 - `1D` usa observações intradiárias da fonte e o arquivo local de hoje. `5D`, `1M` e `1A` buscam os fechamentos diários da fonte e mantêm uma cópia SQLite por moeda. A consulta anual respeita o limite documentado de até 360 dias da fonte.
 - O histórico cresce quando o app recebe respostas de mercado ou histórico. Ele não baixa nem reconstrói preços antigos que não foram coletados pelo aparelho.
 - A linha contínua conecta pontos consecutivos retornados pela fonte, em qualquer período. Cada vértice e seu horário são reais; o trecho reto é só um conector visual e não fornece cotações intermediárias. O app não salva nem mostra preço para horas sem publicação e não estende o último preço após a última observação.
+- A faixa de seleção reúne horário, direção, variação absoluta, percentual e cotação observada. Os valores mudam ao tocar ou arrastar sobre o gráfico.
 - Se ainda não houver observações para o período, o app mostra essa condição. USD turismo não usa o histórico comercial como substituto; períodos longos aparecem indisponíveis enquanto a fonte não fornecer uma série diária de turismo.
 - A atualização em primeiro plano segue os intervalos mostrados pelo app. O Android pode atrasar consultas em segundo plano por economia de bateria, ausência de rede ou políticas do fabricante.
 - Para moedas, a tela comparativa calcula cada variação a partir das publicações reais daquele par. Sem duas observações do dia, mostra “variação indisponível” em vez de estimar um movimento.
 
 ## Navegação da tela principal
 
-O menu separa **Moedas**, **Bolsa**, **Economia** e **Fontes**. Dentro de Moedas, os atalhos **Cotação**, **Gráfico**, **PTAX**, **Converter** e **Outras** mostram apenas o assunto escolhido. Ações/derivativos, conteúdo econômico e fontes ficam em seus próprios destinos. Preferências e Diagnóstico permanecem acessíveis no topo.
+O menu inferior separa **Moedas**, **Bolsa**, **Economia** e **Fontes** e permanece acessível durante a rolagem. Dentro de Moedas, os atalhos **Cotação**, **Gráfico**, **PTAX**, **Converter** e **Outras** mostram apenas o assunto escolhido. Ações/derivativos, conteúdo econômico e fontes ficam em seus próprios destinos. Preferências e Diagnóstico permanecem acessíveis no topo.
 
 ## Atualizações pelo GitHub antes da Play Store
 
