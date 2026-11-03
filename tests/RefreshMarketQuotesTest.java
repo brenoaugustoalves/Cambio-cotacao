@@ -55,7 +55,7 @@ public final class RefreshMarketQuotesTest {
         FakeGateway gateway = new FakeGateway();
         gateway.observations.put(FxCurrency.USD, new MarketObservation(new BigDecimal("5.4000"), time));
         gateway.observations.put(FxCurrency.EUR, new MarketObservation(new BigDecimal("6.2000"), time));
-        new RefreshMarketQuotes(gateway, gateway, gateway, gateway).execute();
+        new RefreshMarketQuotes(new br.com.cambioclaro.app.market.application.StoreMarketBatch(gateway, gateway), gateway, gateway, gateway).execute();
 
         check(gateway.fetches == 1 && "provider-batch".equals(gateway.savedResponse),
                 "One provider batch is fetched and persisted unchanged");
@@ -65,14 +65,14 @@ public final class RefreshMarketQuotesTest {
                 "archive:EUR", "alert:EUR")), "Archive and alert are invoked in deterministic per-currency order");
 
         FakeGateway empty = new FakeGateway();
-        new RefreshMarketQuotes(empty, empty, empty, empty).execute();
+        new RefreshMarketQuotes(new br.com.cambioclaro.app.market.application.StoreMarketBatch(empty, empty), empty, empty, empty).execute();
         check(empty.events.equals(java.util.Arrays.asList("fetch", "save")),
                 "Missing observations are not archived and do not trigger alerts");
 
         FakeGateway failed = new FakeGateway();
         failed.failFetch = true;
         boolean failedAsExpected = false;
-        try { new RefreshMarketQuotes(failed, failed, failed, failed).execute(); }
+        try { new RefreshMarketQuotes(new br.com.cambioclaro.app.market.application.StoreMarketBatch(failed, failed), failed, failed, failed).execute(); }
         catch (java.io.IOException expected) { failedAsExpected = true; }
         check(failedAsExpected && failed.savedResponse == null && failed.snapshots == 0,
                 "Source failure propagates before persistence or side effects");
@@ -80,7 +80,7 @@ public final class RefreshMarketQuotesTest {
         FakeGateway rejectedBatch = new FakeGateway();
         rejectedBatch.failSave = true;
         boolean rejectedAsExpected = false;
-        try { new RefreshMarketQuotes(rejectedBatch, rejectedBatch, rejectedBatch, rejectedBatch).execute(); }
+        try { new RefreshMarketQuotes(new br.com.cambioclaro.app.market.application.StoreMarketBatch(rejectedBatch, rejectedBatch), rejectedBatch, rejectedBatch, rejectedBatch).execute(); }
         catch (java.io.IOException expected) { rejectedAsExpected = true; }
         check(rejectedAsExpected && rejectedBatch.snapshots == 0 && rejectedBatch.events.equals(java.util.Collections.singletonList("fetch")),
                 "Rejected provider batch does not trigger archive or alert side effects");

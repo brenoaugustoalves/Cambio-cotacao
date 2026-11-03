@@ -1,6 +1,7 @@
 package br.com.cambioclaro.app;
 import android.app.job.*;
 import android.os.*;
+import br.com.cambioclaro.app.market.application.MarketRefreshPolicy;
 import java.util.concurrent.*;
 public final class WidgetUpdateService extends JobService {
     private ExecutorService executor;
@@ -16,8 +17,9 @@ public final class WidgetUpdateService extends JobService {
         executor=Executors.newSingleThreadExecutor();
         executor.execute(()->{
             String error=null;
-            if(System.currentTimeMillis()-MarketStore.checked(this)>5*60*1000L||MarketStore.checked(this)==0){try{MarketStore.save(this,MarketClient.fetch());for(FxCurrency fx:FxCurrency.values()){MarketClient.Quote q=MarketStore.snapshot(this,fx);if(q!=null)MarketArchive.merge(this,fx,java.util.Collections.singletonList(new MarketHistory.Point(q.at,q.ask)));}}catch(Exception ex){Diagnostics.record(getApplicationContext(),"atualização de mercado do widget",ex);error="Consulta de mercado falhou";}}
-            for(FxCurrency fx:MarketAlerts.currencies(this))MarketAlerts.evaluate(this,fx,MarketStore.latest(this,fx));
+            boolean refreshedMarket=false;
+            if(MarketRefreshPolicy.isWidgetMarketRefreshDue(System.currentTimeMillis(),MarketStore.checked(this))){try{AndroidMarketRefreshGateway.create(getApplicationContext()).execute();refreshedMarket=true;}catch(Exception ex){Diagnostics.record(getApplicationContext(),"atualização de mercado do widget",ex);error="Consulta de mercado falhou";}}
+            if(!refreshedMarket)for(FxCurrency fx:MarketAlerts.currencies(this))MarketAlerts.evaluate(this,fx,MarketStore.latest(this,fx));
             if(refreshTourism){try{Tourism.saveLatest(this,Tourism.fetchLatest());Tourism.saveHistory(this,Tourism.fetchHistory());}catch(Exception ex){Diagnostics.record(getApplicationContext(),"atualização de USD turismo do widget",ex);error="Consulta turismo falhou";}}
             for(FxCurrency currency:targets){
                 if(Thread.currentThread().isInterrupted())return;

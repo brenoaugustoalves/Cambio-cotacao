@@ -31,6 +31,12 @@ public final class MarketRefreshPolicyTest {
                 "Clock rollback does not trigger a full refresh");
         check(MarketRefreshPolicy.isFullRefreshDue(MarketRefreshPolicy.FULL_REFRESH_INTERVAL_MS, 0L),
                 "An uninitialized timestamp becomes due after one full interval");
+        check(MarketRefreshPolicy.isWidgetMarketRefreshDue(10_000L, 0L),
+                "Widget market refresh is due when no prior check exists");
+        check(!MarketRefreshPolicy.isWidgetMarketRefreshDue(310_000L, 10_000L),
+                "Widget keeps the existing strict five-minute minimum boundary");
+        check(MarketRefreshPolicy.isWidgetMarketRefreshDue(310_001L, 10_000L),
+                "Widget refresh becomes due after the five-minute minimum");
 
         System.out.println(checks + " market refresh policy checks passed");
     }

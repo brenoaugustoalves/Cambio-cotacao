@@ -44,9 +44,9 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 `MarketRefreshPolicy` define os intervalos sem depender do Android: atualização principal a cada 1 min em rede ilimitada ou 5 min em rede medida; economia de bateria eleva o intervalo mínimo a 15 min; histórico atualiza a cada 5 min ou 15 min, respectivamente; atualização completa vence em 12 h. `MainActivity` lê as condições do dispositivo e o `Handler` apenas agenda a próxima execução. O Android ainda pode adiar tarefas quando o app está em segundo plano.
 
-`LatestRequestCoordinator` controla o token e a tarefa cancelável da consulta PTAX selecionada. Ao trocar a moeda ou destruir a atividade, o token é invalidado e o `Future` é cancelado; uma resposta só é aplicada se ainda pertencer ao pedido corrente e à moeda visível. A consulta de mercado, ações e históricos ainda usa controles locais próprios e é uma extração futura.
+`LatestRequestCoordinator` controla o token e a tarefa cancelável da consulta PTAX selecionada. Ao trocar a moeda ou destruir a atividade, o token é invalidado e o `Future` é cancelado; uma resposta só é aplicada se ainda pertencer ao pedido corrente e à moeda visível. As atividades ainda mantêm flags locais para impedir consultas duplicadas de histórico, ações e turismo.
 
-`RefreshMarketQuotes` coordena a atualização em lote usada pela tela principal: fonte → repositório → observações por moeda → arquivo de histórico e alertas. Os contratos ficam na camada de aplicação e `AndroidMarketRefreshGateway` conecta os clientes e stores existentes. O widget e o simulador econômico ainda fazem suas próprias atualizações, fora deste fluxo.
+`RefreshMarketQuotes` coordena o lote usado pela tela principal e pelo widget: fonte → repositório → observações por moeda → arquivo de histórico e alertas. `StoreMarketBatch` compartilha somente busca e persistência com o simulador, sem acionar alertas. `RefreshStockQuotes` mantém erros independentes para ações e Ibovespa. `RefreshMarketHistory` separa carregamentos intradiários e diários e limita a janela pedida ao provedor; `AndroidMarketHistoryGateway` valida e grava cada série no seu repositório.
 
 ### Apresentação
 
@@ -63,7 +63,7 @@ A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia
 
 ## Refatoração incremental restante
 
-O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Foram extraídos o caso de uso, o adaptador e a apresentação do conversor, a política pura de intervalos, o controle de concorrência PTAX e o fluxo de atualização de mercado da tela principal. Próxima iteração: levar os contratos aos carregamentos do widget e do simulador, depois revisar ações e históricos. Não se considera toda a aplicação migrada para Clean Architecture.
+`MainActivity` ainda constrói várias telas e conserva a coordenação de PTAX, turismo, carregamentos e callbacks. `EconomyActivity` ainda coordena downloads SGS, Focus, notícias e histórico; essas fontes não foram migradas para casos de uso nesta etapa. A camada de aplicação dos fluxos de câmbio, mercado, ações e histórico foi separada e testada, mas a aplicação inteira ainda não está migrada para Clean Architecture. Próximos passos são extrair PTAX/turismo e dados macro/notícias, depois separar componentes de apresentação sem mudar os contratos públicos.
 
 ## Distribuição externa
 

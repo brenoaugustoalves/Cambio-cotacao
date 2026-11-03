@@ -21,6 +21,9 @@ import br.com.cambioclaro.app.conversion.presentation.ConversionPresenter;
 import br.com.cambioclaro.app.market.application.MarketRefreshPolicy;
 import br.com.cambioclaro.app.market.application.RefreshMarketQuotes;
 import br.com.cambioclaro.app.market.application.LatestRequestCoordinator;
+import br.com.cambioclaro.app.market.application.RefreshStockQuotes;
+import br.com.cambioclaro.app.market.application.StockRefreshResult;
+import br.com.cambioclaro.app.market.application.RefreshMarketHistory;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -39,6 +42,8 @@ public final class MainActivity extends Activity {
     private boolean converterTourismMode=false;
     private ConvertCurrency conversionUseCase;
     private RefreshMarketQuotes marketQuoteRefresh;
+    private RefreshStockQuotes stockQuoteRefresh;
+    private RefreshMarketHistory marketHistoryRefresh;
     private boolean ptaxOpen=false;
     public static final long AUTO_REFRESH_MS=MarketRefreshPolicy.foregroundInterval(false,false);
     private static final long FULL_REFRESH_MS=MarketRefreshPolicy.FULL_REFRESH_INTERVAL_MS;
@@ -132,7 +137,7 @@ public final class MainActivity extends Activity {
         Uri launchData=getIntent().getData();if(launchData!=null&&"cambioclaro".equals(launchData.getScheme())&&"widget".equals(launchData.getHost()))Diagnostics.widgetEvent(this,"cotacao tocada; tela aberta");
         if(light){BG=0xFFF1F5F7;CARD=0xFFFFFFFF;TEXT=0xFF132A35;MUTED=0xFF476271;MINT=0xFF086A53;AMBER=0xFF805300;}
         String incoming=getIntent().getStringExtra("currency");if(incoming!=null)try{RateStore.select(this,FxCurrency.valueOf(incoming));}catch(IllegalArgumentException ignored){}
-        boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);conversionUseCase=new ConvertCurrency(new AndroidConversionQuoteSource(getApplicationContext()));AndroidMarketRefreshGateway marketGateway=new AndroidMarketRefreshGateway(getApplicationContext());marketQuoteRefresh=new RefreshMarketQuotes(marketGateway,marketGateway,marketGateway,marketGateway);
+        boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);conversionUseCase=new ConvertCurrency(new AndroidConversionQuoteSource(getApplicationContext()));marketQuoteRefresh=AndroidMarketRefreshGateway.create(getApplicationContext());stockQuoteRefresh=new RefreshStockQuotes(new AndroidStockQuoteGateway(getApplicationContext()));marketHistoryRefresh=AndroidMarketHistoryGateway.create(getApplicationContext());
         try{converterCurrency=FxCurrency.valueOf(Preferences.prefs(this).getString("converter_currency",currency.name()));}catch(IllegalArgumentException ignored){converterCurrency=currency;}converterTourismMode=converterCurrency==FxCurrency.USD&&Preferences.prefs(this).getBoolean("converter_usd_tourism",tourismMode);
         if(saved!=null){days=saved.getInt("days",30);ptaxOpen=saved.getBoolean("ptaxOpen",false);marketPeriodDays=saved.getInt("marketPeriodDays",1);selectedSection=saved.getString("section","Moedas");selectedCurrencySection=saved.getString("currencySection","Cotação");try{converterCurrency=FxCurrency.valueOf(saved.getString("converterCurrency",converterCurrency.name()));}catch(IllegalArgumentException ignored){}converterTourismMode=converterCurrency==FxCurrency.USD&&saved.getBoolean("converterTourism",converterTourismMode);}
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
@@ -305,11 +310,11 @@ public final class MainActivity extends Activity {
         });
     }
     private void loadStocks(){
-        if(stocksLoading)return;stocksLoading=true;final boolean indexConfigured=!Stocks.backend(this).isEmpty();
+        if(stocksLoading)return;stocksLoading=true;
         worker.execute(()->{
-            String error=null;
-            try{Stocks.save(this,Stocks.fetchDemo(),false);}catch(Exception ex){Diagnostics.record(getApplicationContext(),"consulta de ações",ex);error="Ações: fonte indisponível";}
-            if(indexConfigured)try{Stocks.save(this,Stocks.fetchIndex(this),true);}catch(Exception ex){Diagnostics.record(getApplicationContext(),"consulta do Ibovespa",ex);error="Ibovespa: "+ex.getMessage();}
+            StockRefreshResult result=stockQuoteRefresh.execute();String error=null;
+            if(result.stocksError!=null){Diagnostics.record(getApplicationContext(),"consulta de ações",result.stocksError);error="Ações: fonte indisponível";}
+            if(result.indexError!=null){Diagnostics.record(getApplicationContext(),"consulta do Ibovespa",result.indexError);error="Ibovespa: "+result.indexError.getMessage();}
             final String failure=error;runOnUiThread(()->{stocksLoading=false;if(!isDestroyed()){updateStocks();if(failure!=null)stocksStatus.setText(failure+" · confira as datas salvas");}});
         });
     }
@@ -321,7 +326,7 @@ public final class MainActivity extends Activity {
     private void loadHistory(FxCurrency requested){
         if(historyLoading.contains(requested))return;historyLoading.add(requested);
         worker.execute(()->{
-            try{long checked=getSharedPreferences("market_history_v1_"+requested.name(),MODE_PRIVATE).getLong("checked",0);if(System.currentTimeMillis()-checked<historyRefreshInterval()){runOnUiThread(()->historyLoading.remove(requested));return;}String raw=MarketHistory.fetch(requested);MarketArchive.mergeResponse(this,requested,raw);MarketHistory.save(this,requested,raw);runOnUiThread(()->{historyLoading.remove(requested);if(!isDestroyed()&&currency==requested){updateDisplay();CambioWidget.renderAll(this,null);}});}
+            try{long checked=getSharedPreferences("market_history_v1_"+requested.name(),MODE_PRIVATE).getLong("checked",0);if(System.currentTimeMillis()-checked<historyRefreshInterval()){runOnUiThread(()->historyLoading.remove(requested));return;}marketHistoryRefresh.refreshIntraday(requested);runOnUiThread(()->{historyLoading.remove(requested);if(!isDestroyed()&&currency==requested){updateDisplay();CambioWidget.renderAll(this,null);}});}
             catch(Exception ex){Diagnostics.record(getApplicationContext(),"histórico de mercado "+requested.name(),ex);runOnUiThread(()->{historyLoading.remove(requested);if(!isDestroyed()&&currency==requested){updateIntraday();intradayStatus.append(" · consulta falhou; mostrando dados salvos");}});}
         });
     }
@@ -332,7 +337,7 @@ public final class MainActivity extends Activity {
         if(!dailyHistoryLoading.add(key))return;intradayStatus.setText("Consultando fechamentos diários reais na AwesomeAPI…");
         worker.execute(()->{
             String error=null;
-            try{int requestDays=observations==365?360:Math.min(360,observations*2+7);String raw=MarketHistory.fetchDaily(requested,requestDays);List<MarketHistory.Point> points=MarketHistory.parseDaily(raw,requested,Instant.now());if(points.isEmpty())throw new java.io.IOException("A fonte não publicou fechamentos para o período.");MarketArchive.mergeDaily(this,requested,points);getSharedPreferences("market_daily_v1",MODE_PRIVATE).edit().putLong(key,System.currentTimeMillis()).apply();}
+            try{marketHistoryRefresh.refreshDaily(requested,observations);}
             catch(Exception failure){Diagnostics.record(getApplicationContext(),"histórico diário "+requested.name()+" "+observations,failure);error="Consulta falhou";}
             final String failure=error;runOnUiThread(()->{dailyHistoryLoading.remove(key);if(!isDestroyed()&&currency==requested&&marketPeriodDays==observations){updateIntraday();if(failure!=null){intradayStatus.append(cached.isEmpty()?" · sem dados salvos para mostrar":" · mostrando somente fechamentos reais salvos anteriormente");}}});
         });

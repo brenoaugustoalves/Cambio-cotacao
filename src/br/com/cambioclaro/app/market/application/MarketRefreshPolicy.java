@@ -3,6 +3,7 @@ package br.com.cambioclaro.app.market.application;
 /** Pure scheduling rules for foreground market refreshes. */
 public final class MarketRefreshPolicy {
     public static final long FULL_REFRESH_INTERVAL_MS = 12L * 60L * 60L * 1000L;
+    public static final long WIDGET_MARKET_MIN_INTERVAL_MS = 5L * 60L * 1000L;
     private static final long UNMETERED_FOREGROUND_MS = 60L * 1000L;
     private static final long METERED_FOREGROUND_MS = 5L * 60L * 1000L;
     private static final long POWER_SAVE_MINIMUM_MS = 15L * 60L * 1000L;
@@ -22,5 +23,9 @@ public final class MarketRefreshPolicy {
 
     public static boolean isFullRefreshDue(long nowMs, long lastRefreshMs) {
         return nowMs >= lastRefreshMs && nowMs - lastRefreshMs >= FULL_REFRESH_INTERVAL_MS;
+    }
+
+    public static boolean isWidgetMarketRefreshDue(long nowMs, long lastCheckMs) {
+        return lastCheckMs == 0 || (nowMs >= lastCheckMs && nowMs - lastCheckMs > WIDGET_MARKET_MIN_INTERVAL_MS);
     }
 }

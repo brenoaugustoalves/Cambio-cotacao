@@ -5,6 +5,8 @@ import br.com.cambioclaro.app.market.application.MarketAlertSink;
 import br.com.cambioclaro.app.market.application.MarketHistoryWriter;
 import br.com.cambioclaro.app.market.application.MarketQuoteRepository;
 import br.com.cambioclaro.app.market.application.MarketQuoteSource;
+import br.com.cambioclaro.app.market.application.RefreshMarketQuotes;
+import br.com.cambioclaro.app.market.application.StoreMarketBatch;
 import br.com.cambioclaro.app.market.domain.MarketObservation;
 import java.util.Collections;
 
@@ -16,6 +18,16 @@ public final class AndroidMarketRefreshGateway implements MarketQuoteSource,
     public AndroidMarketRefreshGateway(Context context) {
         if (context == null) throw new IllegalArgumentException("Contexto obrigatório");
         this.context = context.getApplicationContext();
+    }
+
+    public static RefreshMarketQuotes create(Context context) {
+        AndroidMarketRefreshGateway gateway = new AndroidMarketRefreshGateway(context);
+        return new RefreshMarketQuotes(new StoreMarketBatch(gateway, gateway), gateway, gateway, gateway);
+    }
+
+    public static StoreMarketBatch createBatch(Context context) {
+        AndroidMarketRefreshGateway gateway = new AndroidMarketRefreshGateway(context);
+        return new StoreMarketBatch(gateway, gateway);
     }
 
     @Override public String fetch() throws Exception {
