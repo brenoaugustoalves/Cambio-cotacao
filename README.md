@@ -99,6 +99,7 @@ Os testes deste projeto cobrem parsing, cache, datas, séries reais, lacunas, se
 - `src/br/com/cambioclaro/app/economy/`: domínio, caso de uso e adaptador de referência para o simulador de custo de câmbio.
 - `src/br/com/cambioclaro/app/market/application/`: casos de uso e contratos para PTAX, mercado, ações e históricos, testáveis sem Android.
 - `src/br/com/cambioclaro/app/market/presentation/`: apresentação de variações do gráfico a partir de cotações e horários publicados.
+- Em `market/domain`, comparação entre moedas usa apenas datas de publicação comuns e mantém séries imutáveis.
 - `AndroidEconomySources.java`: adaptadores Android para SGS/Focus, histórico macroeconômico e feeds oficiais; a coordenação resiliente dos lotes fica no caso de uso `RefreshSources`.
 - `EconomyFreshnessPolicy`: regra testável dos intervalos de validade do cache de indicadores e notícias.
 - `PtaxRefreshPolicy`: política testável dos intervalos PTAX usados no resumo e no widget.

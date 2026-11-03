@@ -2,6 +2,7 @@ package br.com.cambioclaro.app;
 import android.content.Context;
 import android.graphics.*;
 import android.view.View;
+import br.com.cambioclaro.app.market.domain.Comparison;
 import java.math.BigDecimal;
 import java.util.*;
 import java.time.format.DateTimeFormatter;

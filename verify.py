@@ -36,6 +36,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      economy_domain/'EconomicQuoteReference.java',economy_application/'EconomicQuoteProvider.java',
      economy_application/'EconomicScenario.java',economy_application/'CalculateEconomicScenario.java',
      ROOT/'src/br/com/cambioclaro/app/FxCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/domain/MarketObservation.java',
+     ROOT/'src/br/com/cambioclaro/app/market/domain/Comparison.java',
      market_presentation/'MarketMovementPresenter.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteSource.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteRepository.java',
@@ -62,12 +63,14 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'src/br/com/cambioclaro/app/market/application/EconomyFreshnessPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/PtaxRefreshPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/domain/PtaxBatch.java',
-     ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
+     ROOT/'tests/RateTest.java',ROOT/'tests/ComparisonTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
      ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java',ROOT/'tests/NewsPresenterTest.java',ROOT/'tests/EconomyHistoryPresenterTest.java',ROOT/'tests/EconomicScenarioPresenterTest.java',ROOT/'tests/MarketMovementPresenterTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
+comparison_results=run([jdk_tool('java'),'-cp',classes,'ComparisonTest'])
+(ROOT/'build/comparison-results.txt').write_text(comparison_results,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
 (ROOT/'build/conversion-results.txt').write_text(conversion_results,encoding='utf8')
 refresh_policy_results=run([jdk_tool('java'),'-cp',classes,'MarketRefreshPolicyTest'])

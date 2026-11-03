@@ -9,6 +9,7 @@ import android.view.*;
 import android.widget.*;
 import android.security.NetworkSecurityPolicy;
 import br.com.cambioclaro.app.*;
+import br.com.cambioclaro.app.market.domain.Comparison;
 import br.com.cambioclaro.app.updates.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;

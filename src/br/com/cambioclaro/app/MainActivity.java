@@ -30,6 +30,7 @@ import br.com.cambioclaro.app.market.application.StoredPtaxRates;
 import br.com.cambioclaro.app.market.application.RefreshTourismQuotes;
 import br.com.cambioclaro.app.market.application.TourismRefreshResult;
 import br.com.cambioclaro.app.market.application.PtaxRefreshPolicy;
+import br.com.cambioclaro.app.market.domain.Comparison;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
