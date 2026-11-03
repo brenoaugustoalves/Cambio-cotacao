@@ -367,7 +367,7 @@ public final class MainActivity extends Activity {
     }
     private void updateIntraday(){
         for(Map.Entry<Integer,Button> entry:marketPeriods.entrySet()){boolean active=entry.getKey()==marketPeriodDays;entry.getValue().setBackground(shape(active?MINT:(light?0xFFE1ECEF:0xFF203641),12));entry.getValue().setTextColor(active?(light?0xFFFFFFFF:BG):MINT);}
-        TreeMap<Instant,MarketHistory.Point> published=new TreeMap<>();List<MarketHistory.Point> source=marketPeriodDays==1?(tourismMode?Tourism.readHistory(this):MarketHistory.read(this,currency)):(tourismMode?Collections.emptyList():MarketArchive.dailyPeriod(this,currency,marketPeriodDays==365?360:marketPeriodDays));for(MarketHistory.Point p:source)published.put(p.at,p);
+        TreeMap<Instant,MarketHistory.Point> published=new TreeMap<>();List<MarketHistory.Point> source=marketPeriodDays==1?(tourismMode?Tourism.readHistory(this):MarketHistory.read(this,currency)):(tourismMode?Collections.emptyList():MarketArchive.dailyPeriod(this,currency,marketPeriodDays));for(MarketHistory.Point p:source)published.put(p.at,p);
         MarketClient.Quote snapshot=tourismMode?Tourism.readLatest(this):MarketStore.snapshot(this,currency);if(snapshot!=null&&marketPeriodDays==1&&(tourismMode||snapshot.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today())))published.put(snapshot.at,new MarketHistory.Point(snapshot.at,snapshot.ask));
         List<MarketHistory.Point> points=new ArrayList<>(published.values());currentIntradayPoints=points;intradayChart.setPoints(points,marketPeriodDays==1,marketPeriodDays);updateIntradayMovements(points,points.isEmpty()?-1:points.size()-1);
         String period=marketPeriodDays==1?"1 dia":marketPeriodDays==5?"5 dias":marketPeriodDays==30?"1 mês":"1 ano";

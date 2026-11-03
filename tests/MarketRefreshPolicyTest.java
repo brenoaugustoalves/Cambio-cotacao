@@ -9,6 +9,8 @@ public final class MarketRefreshPolicyTest {
     }
 
     public static void main(String[] args) {
+        check(MarketRefreshPolicy.BACKGROUND_MARKET_INTERVAL_MS == 15L * 60L * 1000L,
+                "Background batch refresh uses Android's minimum periodic interval");
         check(MarketRefreshPolicy.foregroundInterval(false, false) == 60_000L,
                 "Unmetered foreground refresh uses one minute");
         check(MarketRefreshPolicy.foregroundInterval(true, false) == 300_000L,

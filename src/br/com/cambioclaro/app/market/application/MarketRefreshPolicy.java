@@ -4,6 +4,7 @@ package br.com.cambioclaro.app.market.application;
 public final class MarketRefreshPolicy {
     public static final long FULL_REFRESH_INTERVAL_MS = 12L * 60L * 60L * 1000L;
     public static final long WIDGET_MARKET_MIN_INTERVAL_MS = 5L * 60L * 1000L;
+    public static final long BACKGROUND_MARKET_INTERVAL_MS = 15L * 60L * 1000L;
     private static final long UNMETERED_FOREGROUND_MS = 60L * 1000L;
     private static final long METERED_FOREGROUND_MS = 5L * 60L * 1000L;
     private static final long POWER_SAVE_MINIMUM_MS = 15L * 60L * 1000L;
