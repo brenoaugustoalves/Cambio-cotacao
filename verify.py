@@ -25,8 +25,15 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      conversion/'application/ConvertCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/application/MarketRefreshPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/LatestRequestCoordinator.java',
      conversion/'presentation/ConversionDisplay.java',conversion/'presentation/ConversionPresenter.java',
+     ROOT/'src/br/com/cambioclaro/app/FxCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/domain/MarketObservation.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteSource.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteRepository.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/MarketHistoryWriter.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/MarketAlertSink.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/RefreshMarketQuotes.java',
      ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
-     ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java'])
+     ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
+     ROOT/'tests/RefreshMarketQuotesTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
@@ -37,6 +44,8 @@ presenter_results=run([jdk_tool('java'),'-cp',classes,'ConversionPresenterTest']
 (ROOT/'build/conversion-presenter-results.txt').write_text(presenter_results,encoding='utf8')
 coordinator_results=run([jdk_tool('java'),'-cp',classes,'LatestRequestCoordinatorTest'])
 (ROOT/'build/latest-request-results.txt').write_text(coordinator_results,encoding='utf8')
+market_refresh_results=run([jdk_tool('java'),'-cp',classes,'RefreshMarketQuotesTest'])
+(ROOT/'build/market-refresh-results.txt').write_text(market_refresh_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')

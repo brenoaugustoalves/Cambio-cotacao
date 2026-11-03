@@ -19,6 +19,7 @@ import br.com.cambioclaro.app.conversion.domain.ConversionResult;
 import br.com.cambioclaro.app.conversion.presentation.ConversionDisplay;
 import br.com.cambioclaro.app.conversion.presentation.ConversionPresenter;
 import br.com.cambioclaro.app.market.application.MarketRefreshPolicy;
+import br.com.cambioclaro.app.market.application.RefreshMarketQuotes;
 import br.com.cambioclaro.app.market.application.LatestRequestCoordinator;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -37,6 +38,7 @@ public final class MainActivity extends Activity {
     private FxCurrency converterCurrency=FxCurrency.USD;
     private boolean converterTourismMode=false;
     private ConvertCurrency conversionUseCase;
+    private RefreshMarketQuotes marketQuoteRefresh;
     private boolean ptaxOpen=false;
     public static final long AUTO_REFRESH_MS=MarketRefreshPolicy.foregroundInterval(false,false);
     private static final long FULL_REFRESH_MS=MarketRefreshPolicy.FULL_REFRESH_INTERVAL_MS;
@@ -77,7 +79,7 @@ public final class MainActivity extends Activity {
     private final Map<FxCurrency,View> overviewRows=new LinkedHashMap<>();
     private final Map<FxCurrency,TextView> overviewTitles=new LinkedHashMap<>();
     private ScrollView mainScroll;
-    private final Runnable autoRefresh=new Runnable(){public void run(){if(foreground){long now=System.currentTimeMillis(),interval=foregroundRefreshInterval();if(MarketRefreshPolicy.isFullRefreshDue(now,lastFullRefresh))load();else{loadMarket(true);if(now-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=now;}if(now-lastStocksRefresh>=interval*5){loadStocks();lastStocksRefresh=now;}}autoHandler.postDelayed(this,interval);}}};
+    private final Runnable autoRefresh=new Runnable(){public void run(){if(foreground){long now=System.currentTimeMillis(),interval=foregroundRefreshInterval();if(MarketRefreshPolicy.isFullRefreshDue(now,lastFullRefresh))load();else{loadMarket();if(now-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=now;}if(now-lastStocksRefresh>=interval*5){loadStocks();lastStocksRefresh=now;}}autoHandler.postDelayed(this,interval);}}};
     private List<Rate> rates=new ArrayList<>(),visible=new ArrayList<>();
     private long fetchedAt=0;
     private int days=30;
@@ -130,7 +132,7 @@ public final class MainActivity extends Activity {
         Uri launchData=getIntent().getData();if(launchData!=null&&"cambioclaro".equals(launchData.getScheme())&&"widget".equals(launchData.getHost()))Diagnostics.widgetEvent(this,"cotacao tocada; tela aberta");
         if(light){BG=0xFFF1F5F7;CARD=0xFFFFFFFF;TEXT=0xFF132A35;MUTED=0xFF476271;MINT=0xFF086A53;AMBER=0xFF805300;}
         String incoming=getIntent().getStringExtra("currency");if(incoming!=null)try{RateStore.select(this,FxCurrency.valueOf(incoming));}catch(IllegalArgumentException ignored){}
-        boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);conversionUseCase=new ConvertCurrency(new AndroidConversionQuoteSource(getApplicationContext()));
+        boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);conversionUseCase=new ConvertCurrency(new AndroidConversionQuoteSource(getApplicationContext()));AndroidMarketRefreshGateway marketGateway=new AndroidMarketRefreshGateway(getApplicationContext());marketQuoteRefresh=new RefreshMarketQuotes(marketGateway,marketGateway,marketGateway,marketGateway);
         try{converterCurrency=FxCurrency.valueOf(Preferences.prefs(this).getString("converter_currency",currency.name()));}catch(IllegalArgumentException ignored){converterCurrency=currency;}converterTourismMode=converterCurrency==FxCurrency.USD&&Preferences.prefs(this).getBoolean("converter_usd_tourism",tourismMode);
         if(saved!=null){days=saved.getInt("days",30);ptaxOpen=saved.getBoolean("ptaxOpen",false);marketPeriodDays=saved.getInt("marketPeriodDays",1);selectedSection=saved.getString("section","Moedas");selectedCurrencySection=saved.getString("currencySection","Cotação");try{converterCurrency=FxCurrency.valueOf(saved.getString("converterCurrency",converterCurrency.name()));}catch(IllegalArgumentException ignored){}converterTourismMode=converterCurrency==FxCurrency.USD&&saved.getBoolean("converterTourism",converterTourismMode);}
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
@@ -268,12 +270,12 @@ public final class MainActivity extends Activity {
     private void readCache(){
         rates=RateStore.read(this,currency);fetchedAt=rates.isEmpty()?0:prefs.getLong("fetched",0);
     }
-    private void loadMarket(boolean overview){
+    private void loadMarket(){
         if(marketLoading)return;
         marketLoading=true;final FxCurrency requested=currency;
         worker.execute(()->{
             String selectedError=null;
-            try{MarketStore.save(this,MarketClient.fetch());for(FxCurrency fx:FxCurrency.values()){MarketClient.Quote q=MarketStore.snapshot(this,fx);if(q!=null)MarketArchive.merge(this,fx,Collections.singletonList(new MarketHistory.Point(q.at,q.ask)));MarketAlerts.evaluate(this,fx,q);}}
+            try{marketQuoteRefresh.execute();}
             catch(Exception ex){Diagnostics.record(getApplicationContext(),"consulta de mercado",ex);selectedError="Consulta de mercado falhou · exibindo último dado salvo, se houver";}
             final String failure=selectedError;
             runOnUiThread(()->{marketLoading=false;if(!isDestroyed()){market=MarketStore.read(this);updateDisplay();CambioWidget.renderAll(this,null);if(failure!=null&&currency==requested)setMarketFreshness(failure,true);}});
@@ -365,7 +367,7 @@ public final class MainActivity extends Activity {
     private String selectedMovement(List<MarketHistory.Point> points,int index){MarketHistory.Point current=points.get(index);DateTimeFormatter format=DateTimeFormatter.ofPattern(marketPeriodDays>1?"dd/MM HH:mm":"HH:mm",br);String time=current.at.atZone(BcbClient.ZONE).format(format);if(index==0)return "BASE · "+time+" · R$ "+IntradayMovement.value(current.ask)+" · sem publicação anterior";MarketHistory.Point previous=points.get(index-1);BigDecimal delta=IntradayMovement.absoluteDelta(previous,current),change=IntradayMovement.percentDelta(previous,current);String direction=delta.signum()>0?"▲ Alta ":delta.signum()<0?"▼ Baixa ":"● Estável ";String sign=delta.signum()>0?"+":delta.signum()<0?"−":"";String percentSign=change.signum()>0?"+":change.signum()<0?"−":"";String previousTime=previous.at.atZone(BcbClient.ZONE).format(format);return time+" · "+direction+sign+"R$ "+IntradayMovement.value(delta.abs())+" ("+percentSign+IntradayMovement.value(change.abs())+"%) desde "+previousTime+" · atual R$ "+IntradayMovement.value(current.ask);}
     private void load(){
         if(loading)return;loading=true;lastFullRefresh=System.currentTimeMillis();refresh.setEnabled(false);refresh.setText("Buscando…");
-        loadMarket(true);
+        loadMarket();
         if(currency==FxCurrency.USD)loadTourism();
         loadStocks();
         loadHistory(currency);
@@ -535,7 +537,7 @@ public final class MainActivity extends Activity {
     @Override public void onSaveInstanceState(Bundle b){super.onSaveInstanceState(b);b.putInt("days",days);b.putInt("marketPeriodDays",marketPeriodDays);b.putString("section",selectedSection);b.putString("currencySection",selectedCurrencySection);b.putBoolean("ptaxOpen",ptaxOpen);b.putString("converterCurrency",converterCurrency.name());b.putBoolean("converterTourism",converterTourismMode);b.putString("amount",amount.getText().toString());Preferences.prefs(this).edit().putString("amount",amount.getText().toString()).apply();}
     @Override public void onDestroy(){ptaxRequests.invalidate();autoHandler.removeCallbacks(autoRefresh);worker.shutdownNow();super.onDestroy();}
     @Override public void onPause(){foreground=false;autoHandler.removeCallbacks(autoRefresh);super.onPause();}
-    @Override public void onResume(){super.onResume();if(themeMode!=null&&(!themeMode.equals(Preferences.prefs(this).getString("theme","system"))||light!=Preferences.light(this))){recreate();return;}CambioWidget.syncAlertSchedule(this);refreshFutures();foreground=true;autoHandler.removeCallbacks(autoRefresh);autoHandler.postDelayed(autoRefresh,foregroundRefreshInterval());if(rateText!=null&&!loading){readCache();market=MarketStore.read(this);confirmed=false;updateDisplay();if(fetchedAt==0||System.currentTimeMillis()-fetchedAt>FULL_REFRESH_MS)load();else{lastFullRefresh=System.currentTimeMillis();loadMarket(false);if(System.currentTimeMillis()-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=System.currentTimeMillis();}if(System.currentTimeMillis()-lastStocksRefresh>=foregroundRefreshInterval()*5){loadStocks();lastStocksRefresh=System.currentTimeMillis();}statusText.setText("Consulta PTAX salva em "+Instant.ofEpochMilli(fetchedAt).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm",br))+" (Brasília)");statusText.setTextColor(MUTED);}}refreshOverview();if(marketPeriodDays>1)loadDailyPeriod(currency,marketPeriodDays);}
+    @Override public void onResume(){super.onResume();if(themeMode!=null&&(!themeMode.equals(Preferences.prefs(this).getString("theme","system"))||light!=Preferences.light(this))){recreate();return;}CambioWidget.syncAlertSchedule(this);refreshFutures();foreground=true;autoHandler.removeCallbacks(autoRefresh);autoHandler.postDelayed(autoRefresh,foregroundRefreshInterval());if(rateText!=null&&!loading){readCache();market=MarketStore.read(this);confirmed=false;updateDisplay();if(fetchedAt==0||System.currentTimeMillis()-fetchedAt>FULL_REFRESH_MS)load();else{lastFullRefresh=System.currentTimeMillis();loadMarket();if(System.currentTimeMillis()-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=System.currentTimeMillis();}if(System.currentTimeMillis()-lastStocksRefresh>=foregroundRefreshInterval()*5){loadStocks();lastStocksRefresh=System.currentTimeMillis();}statusText.setText("Consulta PTAX salva em "+Instant.ofEpochMilli(fetchedAt).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm",br))+" (Brasília)");statusText.setTextColor(MUTED);}}refreshOverview();if(marketPeriodDays>1)loadDailyPeriod(currency,marketPeriodDays);}
 
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);String code=intent.getStringExtra("currency");boolean hasTourism=intent.hasExtra("tourism"),tourism=intent.getBooleanExtra("tourism",false);intent.removeExtra("currency");intent.removeExtra("tourism");if(code!=null)try{selector.setSelection(FxCurrency.valueOf(code).ordinal());if(hasTourism)selectUsdMode(tourism);mainScroll.smoothScrollTo(0,0);}catch(IllegalArgumentException ignored){}}
     private void updateFavorite(){if(favoriteButton!=null)favoriteButton.setText(Preferences.favorite(this,currency)?"★ Remover "+currency.name()+" das favoritas":"☆ Favoritar "+currency.name());}
