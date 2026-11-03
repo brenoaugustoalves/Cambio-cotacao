@@ -29,6 +29,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'src/br/com/cambioclaro/app/market/application/LatestRequestCoordinator.java',
      conversion/'presentation/ConversionDisplay.java',conversion/'presentation/ConversionPresenter.java',
      economy_presentation/'EconomyDisplay.java',economy_presentation/'EconomyPresenter.java',
+     economy_presentation/'NewsDisplay.java',economy_presentation/'NewsPresenter.java',
      economy_domain/'EconomicQuoteReference.java',economy_application/'EconomicQuoteProvider.java',
      economy_application/'EconomicScenario.java',economy_application/'CalculateEconomicScenario.java',
      ROOT/'src/br/com/cambioclaro/app/FxCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/domain/MarketObservation.java',
@@ -60,7 +61,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
-     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java'])
+     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java',ROOT/'tests/NewsPresenterTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
@@ -91,6 +92,8 @@ economy_presentation_results=run([jdk_tool('java'),'-cp',classes,'EconomyPresent
 (ROOT/'build/economy-presentation-results.txt').write_text(economy_presentation_results,encoding='utf8')
 economic_scenario_results=run([jdk_tool('java'),'-cp',classes,'CalculateEconomicScenarioTest'])
 (ROOT/'build/economic-scenario-results.txt').write_text(economic_scenario_results,encoding='utf8')
+news_presentation_results=run([jdk_tool('java'),'-cp',classes,'NewsPresenterTest'])
+(ROOT/'build/news-presentation-results.txt').write_text(news_presentation_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')
