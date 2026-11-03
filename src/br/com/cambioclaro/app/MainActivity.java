@@ -12,6 +12,11 @@ import android.os.PowerManager;
 import android.text.*;
 import android.view.*;
 import android.widget.*;
+import br.com.cambioclaro.app.conversion.application.ConvertCurrency;
+import br.com.cambioclaro.app.conversion.data.AndroidConversionQuoteSource;
+import br.com.cambioclaro.app.conversion.domain.ConversionQuote;
+import br.com.cambioclaro.app.conversion.domain.ConversionRequest;
+import br.com.cambioclaro.app.conversion.domain.ConversionResult;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -29,6 +34,7 @@ public final class MainActivity extends Activity {
     private boolean tourismMode=false,tourismLoading=false;
     private FxCurrency converterCurrency=FxCurrency.USD;
     private boolean converterTourismMode=false;
+    private ConvertCurrency conversionUseCase;
     private boolean ptaxOpen=false;
     private LinearLayout usdModes;private Button commercialButton,tourismButton;
     public static final long AUTO_REFRESH_MS=60*1000L;
@@ -121,7 +127,7 @@ public final class MainActivity extends Activity {
         Uri launchData=getIntent().getData();if(launchData!=null&&"cambioclaro".equals(launchData.getScheme())&&"widget".equals(launchData.getHost()))Diagnostics.widgetEvent(this,"cotacao tocada; tela aberta");
         if(light){BG=0xFFF1F5F7;CARD=0xFFFFFFFF;TEXT=0xFF132A35;MUTED=0xFF476271;MINT=0xFF086A53;AMBER=0xFF805300;}
         String incoming=getIntent().getStringExtra("currency");if(incoming!=null)try{RateStore.select(this,FxCurrency.valueOf(incoming));}catch(IllegalArgumentException ignored){}
-        boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);
+        boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);conversionUseCase=new ConvertCurrency(new AndroidConversionQuoteSource(getApplicationContext()));
         try{converterCurrency=FxCurrency.valueOf(Preferences.prefs(this).getString("converter_currency",currency.name()));}catch(IllegalArgumentException ignored){converterCurrency=currency;}converterTourismMode=converterCurrency==FxCurrency.USD&&Preferences.prefs(this).getBoolean("converter_usd_tourism",tourismMode);
         if(saved!=null){days=saved.getInt("days",30);ptaxOpen=saved.getBoolean("ptaxOpen",false);marketPeriodDays=saved.getInt("marketPeriodDays",1);selectedSection=saved.getString("section","Moedas");selectedCurrencySection=saved.getString("currencySection","Cotação");try{converterCurrency=FxCurrency.valueOf(saved.getString("converterCurrency",converterCurrency.name()));}catch(IllegalArgumentException ignored){}converterTourismMode=converterCurrency==FxCurrency.USD&&saved.getBoolean("converterTourism",converterTourismMode);}
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
@@ -508,12 +514,28 @@ public final class MainActivity extends Activity {
     }
     private void updateConversion(){
         if(resultText==null)return;
-        MarketClient.Quote quote=converterTourismMode?Tourism.latest(this):MarketStore.latest(this,converterCurrency);List<Rate> converterRates=converterTourismMode?Collections.emptyList():RateStore.read(this,converterCurrency);
         converterTitle.setText("Converter "+(converterTourismMode?"USD turismo":converterCurrency.name())+" → BRL");amountLabel.setText("Valor em "+converterCurrency.name()+" ("+converterCurrency.label+")");amount.setContentDescription("Valor em "+converterCurrency.name()+". Use vírgula ou ponto decimal, sem separador de milhar.");
-        if(quote==null&&converterRates.isEmpty()){resultText.setText("—");convertNote.setText(converterTourismMode?"Dólar turismo indisponível. Não usamos a cotação comercial como substituto.":"Sem cotação válida de "+converterCurrency.name()+". Atualize para consultar a fonte.");return;}
-        if(amount.getText().toString().trim().isEmpty()){resultText.setText("—");convertNote.setText("Digite um valor em "+converterCurrency.name()+".");return;}
-        try{if(converterTourismMode&&quote==null){resultText.setText("—");convertNote.setText("Dólar turismo indisponível. Não usamos a cotação comercial como substituto.");return;}Rate fallback=converterRates.isEmpty()?null:converterRates.get(converterRates.size()-1);BigDecimal value=Rate.convert(amount.getText().toString(),quote!=null?quote.ask:fallback.sell);resultText.setText(money(value,2));convertNote.setText(quote!=null?"Referência: "+(converterTourismMode?"dólar turismo":"mercado")+" (ask) de "+quote.at.atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM HH:mm",br))+".\nSem tarifas ou IOF adicionais.":"Referência: PTAX venda de "+fallback.at.format(dayFormat)+".\nSem tarifas, spread ou IOF. Dado salvo; cotação de mercado indisponível.");}
-        catch(IllegalArgumentException ex){resultText.setText("—");convertNote.setText(ex.getMessage());}
+        ConversionResult result=conversionUseCase.execute(new ConversionRequest(converterCurrency.name(),amount.getText().toString(),converterTourismMode));
+        if(result.status!=ConversionResult.Status.SUCCESS){resultText.setText("—");convertNote.setText(conversionMessage(result.status));return;}
+        resultText.setText(money(result.amountInReais,2));
+        ConversionQuote quote=result.quote;
+        String published=quote.publishedAt.atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM HH:mm",br));
+        if(quote.source==ConversionQuote.Source.PTAX){
+            convertNote.setText("Referência: PTAX venda de "+quote.publishedAt.atZone(BcbClient.ZONE).format(dayFormat)+".\nMercado indisponível; usando a última PTAX salva. Sem tarifas ou IOF adicionais.");
+        }else{
+            String source=quote.source==ConversionQuote.Source.TOURISM?"dólar turismo (ask)":"mercado (ask)";
+            convertNote.setText("Referência: "+source+" publicada em "+published+".\nSem tarifas ou IOF adicionais.");
+        }
+    }
+    private String conversionMessage(ConversionResult.Status status){
+        switch(status){
+            case AMOUNT_REQUIRED:return "Digite um valor em "+converterCurrency.name()+".";
+            case INVALID_AMOUNT:return "Digite um valor válido, com até 2 casas decimais e sem separador de milhar.";
+            case INVALID_CURRENCY:return "Moeda não reconhecida para conversão.";
+            case INVALID_MODE:return "Dólar turismo está disponível somente para USD.";
+            case RATE_UNAVAILABLE:return converterTourismMode?"Dólar turismo indisponível. Não usamos a cotação comercial como substituto.":"Sem cotação válida de "+converterCurrency.name()+". Atualize para consultar a fonte.";
+            default:return "Não foi possível calcular a conversão.";
+        }
     }
     private void showTable(){
         if(visible.isEmpty()){new AlertDialog.Builder(this).setTitle("Sem dados").setMessage("Não há publicações válidas para o período selecionado.").setPositiveButton("OK",null).show();return;}

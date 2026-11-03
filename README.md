@@ -91,6 +91,7 @@ Os testes deste projeto cobrem parsing, cache, datas, séries reais, lacunas, se
 ## Organização do código
 
 - `src/br/com/cambioclaro/app/`: apresentação Android, integrações atuais, domínio, gráficos, alertas e widgets.
+- `src/br/com/cambioclaro/app/conversion/`: caso de uso de conversão independente do Android, contrato de leitura de cotações e adaptador para as fontes/cache existentes.
 - `src/br/com/cambioclaro/app/updates/`: metadados de Release, cliente GitHub, verificação/instalação de APK e notificação, divididos por responsabilidade.
 - `MarketArchive.java` / `MarketArchiveDb.java`: fachada de repositório, migração assíncrona e tabelas SQLite separadas por série.
 - `res/`: layouts, ícones, strings e estilos Android.
@@ -99,6 +100,7 @@ Os testes deste projeto cobrem parsing, cache, datas, séries reais, lacunas, se
 - `build.py`, `build_bundle.py`, `build_tests.py`, `verify.py`: compilação e verificação local.
 - `RELEASE-*.md`, `TESTE-*.md`: descrição por versão e evidências de validação.
 - `ARCHITECTURE.md`: limites de camadas aplicados e refatorações incrementais planejadas.
+- `TESTE-ARQUITETURA-1.8.0.md`: escopo, critérios de aceite e evidência da primeira extração do conversor.
 
 ## Histórico de versões
 

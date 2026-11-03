@@ -17,9 +17,16 @@ def run(cmd):
     print(result.stdout);print(result.stderr,file=sys.stderr);result.check_returncode();return result.stdout
 run([sys.executable,'build.py'])
 classes=ROOT/'build/test-classes';classes.mkdir(exist_ok=True)
-run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,ROOT/'src/br/com/cambioclaro/app/Rate.java',ROOT/'src/br/com/cambioclaro/app/EconomicSimulator.java',ROOT/'tests/RateTest.java'])
+conversion=ROOT/'src/br/com/cambioclaro/app/conversion'
+run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
+     ROOT/'src/br/com/cambioclaro/app/Rate.java',ROOT/'src/br/com/cambioclaro/app/EconomicSimulator.java',
+     conversion/'domain/ConversionQuote.java',conversion/'domain/ConversionRequest.java',
+     conversion/'domain/ConversionResult.java',conversion/'application/ConversionQuoteSource.java',
+     conversion/'application/ConvertCurrency.java',ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
+conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
+(ROOT/'build/conversion-results.txt').write_text(conversion_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')

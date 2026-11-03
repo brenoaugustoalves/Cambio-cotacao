@@ -22,6 +22,22 @@ SettingsActivity ──> GithubUpdates (coordena casos de uso)
 
 `MarketHistory` valida pares, timestamps e valores fornecidos pela AwesomeAPI. Para períodos maiores, a UI consulta a operação de fechamento diário documentada pela fonte e salva esses pontos no repositório diário. Não existe geração de cotações entre timestamps.
 
+### Conversão de moedas
+
+```text
+MainActivity ──> ConvertCurrency ──> ConversionQuoteSource (porta)
+                       │                       ▲
+                       └──> Rate               │
+                                 AndroidConversionQuoteSource
+                                   ├── MarketStore
+                                   ├── Tourism
+                                   └── RateStore (PTAX)
+```
+
+`ConvertCurrency` recebe uma intenção (`ConversionRequest`), aplica as regras de modo/moeda e calcula usando a regra de domínio `Rate.convert`. A porta permite testar essa política sem Android, rede ou armazenamento real; o adaptador Android lê somente observações persistidas. `ConversionResult` comunica estados explícitos à apresentação, que formata valor, origem e horário.
+
+Para conversão comercial, uma cotação de mercado ausente permite usar a última PTAX salva, com essa origem indicada ao usuário. Para turismo, a falta de uma cotação própria resulta em indisponibilidade; não há substituição por comercial/PTAX. A conversão não consulta rede durante digitação e não estima taxas nem tarifas.
+
 ### Apresentação
 
 A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia abre sua própria atividade. Dentro de Moedas, navegação adicional isola Cotação, Gráfico, PTAX, Converter e Outras. Assim, o cliente abre apenas o assunto escolhido e não precisa percorrer uma única página longa.
@@ -37,7 +53,7 @@ A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia
 
 ## Refatoração incremental restante
 
-O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Essa extração deve ser feita por assunto, mantendo testes instrumentados de navegação, cache e origem dos dados a cada passo. Uma migração geral de pacote/módulo agora aumentaria o risco sem melhorar a experiência imediata.
+O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Esta entrega foi uma iteração vertical: política da conversão, porta, adaptador, integração e testes foram concluídos como um só fluxo. Próximas iterações devem extrair a apresentação da conversão e a coordenação de atualização de mercado, mantendo testes instrumentados de navegação, cache e origem dos dados por etapa. Não se considera toda a aplicação migrada para Clean Architecture.
 
 ## Distribuição externa
 
