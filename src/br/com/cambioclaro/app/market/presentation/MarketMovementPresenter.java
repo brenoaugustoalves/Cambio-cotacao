@@ -14,6 +14,7 @@ public final class MarketMovementPresenter {
     private static final Locale BR=new Locale("pt","BR");
     private static final DateTimeFormatter CLOCK=DateTimeFormatter.ofPattern("HH:mm",BR);
     private static final DateTimeFormatter DATE_CLOCK=DateTimeFormatter.ofPattern("dd/MM HH:mm",BR);
+    private static final DateTimeFormatter FULL_DATE_CLOCK=DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm",BR);
     public BigDecimal absoluteDelta(MarketObservation previous,MarketObservation current){
         if(previous==null||current==null)throw new IllegalArgumentException("Duas publicações são necessárias");
         return current.ask.subtract(previous.ask);
@@ -27,9 +28,12 @@ public final class MarketMovementPresenter {
         return absoluteDelta(points.get(index-1),points.get(index)).signum();
     }
     public String summary(List<MarketObservation> points,int index,boolean includeDate,ZoneId zone){
+        return summary(points,index,includeDate,false,zone);
+    }
+    public String summary(List<MarketObservation> points,int index,boolean includeDate,boolean includeYear,ZoneId zone){
         if(points==null||points.isEmpty()||index<0||index>=points.size())return "Sem publicação para comparar.";
         if(zone==null)throw new IllegalArgumentException("Fuso horário obrigatório");
-        MarketObservation current=points.get(index);DateTimeFormatter format=includeDate?DATE_CLOCK:CLOCK;
+        MarketObservation current=points.get(index);DateTimeFormatter format=includeYear?FULL_DATE_CLOCK:includeDate?DATE_CLOCK:CLOCK;
         String time=format.format(current.publishedAt.atZone(zone));
         if(index==0)return "Base do período · "+time+" · R$ "+value(current.ask)+" · variação indisponível sem publicação anterior.";
         MarketObservation previous=points.get(index-1);BigDecimal delta=absoluteDelta(previous,current),percent=percentDelta(previous,current);
@@ -39,8 +43,11 @@ public final class MarketMovementPresenter {
         return time+" · "+direction+" "+amount+" ("+percentText+"%) desde "+format.format(previous.publishedAt.atZone(zone))+" · cotação R$ "+value(current.ask);
     }
     public String selectedMovement(List<MarketObservation> points,int index,boolean includeDate,ZoneId zone){
+        return selectedMovement(points,index,includeDate,false,zone);
+    }
+    public String selectedMovement(List<MarketObservation> points,int index,boolean includeDate,boolean includeYear,ZoneId zone){
         if(points==null||points.isEmpty()||index<0||index>=points.size())return "Sem publicação para comparar.";
-        DateTimeFormatter format=includeDate?DATE_CLOCK:CLOCK;MarketObservation current=points.get(index);
+        DateTimeFormatter format=includeYear?FULL_DATE_CLOCK:includeDate?DATE_CLOCK:CLOCK;MarketObservation current=points.get(index);
         String time=format.format(current.publishedAt.atZone(zone));
         if(index==0)return "BASE · "+time+" · R$ "+value(current.ask)+" · sem publicação anterior";
         MarketObservation previous=points.get(index-1);BigDecimal delta=absoluteDelta(previous,current),change=percentDelta(previous,current);

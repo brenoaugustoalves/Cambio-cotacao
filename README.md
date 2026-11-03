@@ -8,7 +8,7 @@ Esta versão separa os fechamentos diários dos pontos intradiários em SQLite, 
 
 O histórico fica organizado por moeda e horário, com gravação transacional, deduplicação pela chave `(moeda, horário)`, consulta indexada por período e retenção limitada a 5.000 pontos e 365 dias. A atualização preserva os pontos JSON existentes na primeira abertura após a instalação.
 
-No gráfico, `1D` consulta cotações intradiárias; `5D`, `1M` e `1A` consultam fechamentos diários da AwesomeAPI. Cada par tem sua própria série. Pontos intradiários e diários não se misturam. A tela comparativa mostra variação de cada moeda quando há duas publicações reais para comparar. O limite de 360 registros diários segue a [documentação da API de moedas AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas). Veja [notas da versão 1.8.0](RELEASE-1.8.0.md) e [resultados dos testes](TESTE-ARMAZENAMENTO-1.8.0.md).
+No gráfico, `1D` consulta cotações intradiárias; `5D`, `1M` e `1A` consultam fechamentos diários da AwesomeAPI para as datas do período selecionado. Cada par tem sua própria série, e pontos intradiários e diários não se misturam. A tela comparativa mostra a variação de cada moeda quando há duas publicações reais para comparar. Para o período diário, a consulta usa `start_date` e `end_date`; a API documenta até 360 registros no endpoint diário e permite consultar datas específicas ([documentação AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas)). Veja [notas da versão 1.8.0](RELEASE-1.8.0.md) e [resultados dos testes](TESTE-ARMAZENAMENTO-1.8.0.md).
 
 ## Gráfico de mercado — como funciona
 

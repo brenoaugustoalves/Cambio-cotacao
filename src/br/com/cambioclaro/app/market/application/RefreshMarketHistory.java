@@ -21,8 +21,7 @@ public final class RefreshMarketHistory {
     public void refreshDaily(FxCurrency currency, int observations) throws Exception {
         requireCurrency(currency);
         if (observations < 1 || observations > 365) throw new IllegalArgumentException("Período inválido");
-        int requestDays = observations == 365 ? 360 : Math.min(360, observations * 2 + 7);
-        history.saveDaily(currency, observations, source.fetchDaily(currency, requestDays));
+        history.saveDaily(currency, observations, source.fetchDaily(currency, observations));
     }
 
     private static void requireCurrency(FxCurrency currency) {

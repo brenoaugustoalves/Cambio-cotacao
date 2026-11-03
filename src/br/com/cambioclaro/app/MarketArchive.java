@@ -43,8 +43,8 @@ public final class MarketArchive {
     public static void mergeDaily(Context c,FxCurrency fx,List<MarketHistory.Point> incoming){
         if(c==null||fx==null||incoming==null||incoming.isEmpty())return;try{db(c).mergeDaily(fx,incoming,Instant.now());}catch(RuntimeException failure){Diagnostics.record(c,"gravação do histórico diário "+fx.name(),failure);}
     }
-    public static List<MarketHistory.Point> dailyPeriod(Context c,FxCurrency fx,int observations){
-        if(observations<1||observations>365)throw new IllegalArgumentException("Período inválido");if(c==null||fx==null)return Collections.emptyList();try{Instant now=Instant.now();long calendarWindow=Math.min(MAX_AGE_DAYS,observations*2L+7L);List<MarketHistory.Point> values=db(c).readDaily(fx,now.minus(Duration.ofDays(calendarWindow)).toEpochMilli(),now.toEpochMilli()+300000L);if(values.size()<=observations)return values;return new ArrayList<>(values.subList(values.size()-observations,values.size()));}catch(RuntimeException failure){Diagnostics.record(c,"consulta do histórico diário "+fx.name(),failure);return Collections.emptyList();}
+    public static List<MarketHistory.Point> dailyPeriod(Context c,FxCurrency fx,int calendarDays){
+        if(calendarDays<1||calendarDays>365)throw new IllegalArgumentException("Período inválido");if(c==null||fx==null)return Collections.emptyList();try{Instant now=Instant.now();return db(c).readDaily(fx,now.minus(Duration.ofDays(calendarDays)).toEpochMilli(),now.toEpochMilli()+300000L);}catch(RuntimeException failure){Diagnostics.record(c,"consulta do histórico diário "+fx.name(),failure);return Collections.emptyList();}
     }
     public static void mergeResponse(Context c,FxCurrency fx,String raw)throws Exception{merge(c,fx,MarketHistory.parseAll(raw,fx,Instant.now()));}
     public static List<MarketHistory.Point> period(Context c,FxCurrency fx,int days){

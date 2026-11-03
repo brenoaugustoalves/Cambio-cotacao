@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import javax.net.ssl.HttpsURLConnection;
 
@@ -18,7 +19,8 @@ public final class MarketHistory {
         Point(Instant at,BigDecimal ask){this.at=at;this.ask=ask;}
     }
     public static String url(FxCurrency currency){if(currency==null)throw new IllegalArgumentException("Moeda obrigatória");return "https://economia.awesomeapi.com.br/"+currency.name()+"-BRL/100";}
-    public static String dailyUrl(FxCurrency currency,int days){if(currency==null||days<1||days>360)throw new IllegalArgumentException("Moeda ou período inválido");return "https://economia.awesomeapi.com.br/json/daily/"+currency.name()+"-BRL/"+days;}
+    public static String dailyUrl(FxCurrency currency,int days){if(currency==null||days<1||days>365)throw new IllegalArgumentException("Moeda ou período inválido");LocalDate end=BcbClient.today();return dailyUrl(currency,end.minusDays(days),end);}
+    public static String dailyUrl(FxCurrency currency,LocalDate start,LocalDate end){if(currency==null||start==null||end==null||start.isAfter(end)||Duration.between(start.atStartOfDay(),end.atStartOfDay()).toDays()>365)throw new IllegalArgumentException("Moeda ou período inválido");int days=(int)Math.max(1,Duration.between(start.atStartOfDay(),end.atStartOfDay()).toDays());int limit=Math.min(360,days);DateTimeFormatter format=DateTimeFormatter.BASIC_ISO_DATE;return "https://economia.awesomeapi.com.br/json/daily/"+currency.name()+"-BRL/"+limit+"?start_date="+start.format(format)+"&end_date="+end.format(format);}
     public static String fetch(FxCurrency currency)throws IOException{
         HttpsURLConnection c=(HttpsURLConnection)new URL(url(currency)).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(20000);c.setInstanceFollowRedirects(false);c.setRequestProperty("Accept","application/json");
         try{if(c.getResponseCode()!=200)throw new IOException("Histórico de mercado indisponível: HTTP "+c.getResponseCode());ByteArrayOutputStream out=new ByteArrayOutputStream();try(InputStream in=c.getInputStream()){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1){if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Consulta cancelada");if(out.size()+n>131072)throw new IOException("Histórico de mercado maior que o esperado");out.write(b,0,n);}}return new String(out.toByteArray(),StandardCharsets.UTF_8);}finally{c.disconnect();}

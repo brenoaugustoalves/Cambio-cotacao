@@ -22,9 +22,15 @@ public final class IntradayMovement {
     public static String summary(List<MarketHistory.Point> points,int index,boolean includeDate){
         return PRESENTER.summary(adapt(points),index,includeDate,BcbClient.ZONE);
     }
+    public static String summary(List<MarketHistory.Point> points,int index,boolean includeDate,boolean includeYear){
+        return PRESENTER.summary(adapt(points),index,includeDate,includeYear,BcbClient.ZONE);
+    }
     public static int direction(List<MarketHistory.Point> points,int index){return PRESENTER.direction(adapt(points),index);}
     public static String selectedMovement(List<MarketHistory.Point> points,int index,boolean includeDate){
         return PRESENTER.selectedMovement(adapt(points),index,includeDate,BcbClient.ZONE);
+    }
+    public static String selectedMovement(List<MarketHistory.Point> points,int index,boolean includeDate,boolean includeYear){
+        return PRESENTER.selectedMovement(adapt(points),index,includeDate,includeYear,BcbClient.ZONE);
     }
     public static String value(BigDecimal amount){return PRESENTER.value(amount);}
 

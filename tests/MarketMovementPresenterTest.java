@@ -21,6 +21,7 @@ public final class MarketMovementPresenterTest {
         check(presenter.direction(Arrays.asList(fallen,stable),1)==0&&presenter.summary(Arrays.asList(fallen,stable),1,false,zone).contains("Ficou estável"),"Equal published prices are explicitly stable");
         check(presenter.summary(Collections.singletonList(first),0,false,zone).contains("Base do período")&&presenter.summary(Collections.singletonList(first),0,false,zone).contains("variação indisponível"),"First observation is a baseline without invented previous change");
         check(presenter.summary(Collections.singletonList(first),0,true,zone).contains("30/10 09:00"),"Long-period observation includes date and local time");
+        check(presenter.summary(Collections.singletonList(first),0,true,true,zone).contains("30/10/2026 09:00"),"Year-scale selection includes the year in point timestamps");
         check(presenter.selectedMovement(Arrays.asList(first,risen),1,false,zone).contains("▲ Alta +R$ 0,0002"),"Selected chart point uses consistent exact movement");
         check(presenter.summary(Collections.emptyList(),0,false,zone).contains("Sem publicação"),"Empty point selection is safe");
         check(presenter.value(new BigDecimal("0.0002")).equals("0,0002"),"Quote precision is retained in Brazilian formatting");

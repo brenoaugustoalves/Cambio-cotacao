@@ -44,11 +44,13 @@ public final class RefreshMarketHistoryTest {
 
         gateway.events.clear();
         refresh.refreshDaily(FxCurrency.EUR, 5);
-        check(gateway.dailyDays == 17 && gateway.events.equals(java.util.Arrays.asList(
+        check(gateway.dailyDays == 5 && gateway.events.equals(java.util.Arrays.asList(
                 "fetch-daily:EUR", "save-daily:EUR:5:daily-response")),
-                "Five daily observations request a bounded source window and persist separately");
+                "Five calendar days request the matching date range and persist separately");
+        refresh.refreshDaily(FxCurrency.EUR, 30);
+        check(gateway.dailyDays == 30, "One-month selection requests thirty calendar days");
         refresh.refreshDaily(FxCurrency.GBP, 365);
-        check(gateway.dailyDays == 360, "Maximum period respects provider's 360-day limit");
+        check(gateway.dailyDays == 365, "One-year selection requests its exact 365-day period");
 
         int eventsBeforeInvalid = gateway.events.size();
         boolean rejected = false;
