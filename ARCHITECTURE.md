@@ -44,6 +44,8 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 `MarketRefreshPolicy` define os intervalos sem depender do Android: atualização principal a cada 1 min em rede ilimitada ou 5 min em rede medida; economia de bateria eleva o intervalo mínimo a 15 min; histórico atualiza a cada 5 min ou 15 min, respectivamente; atualização completa vence em 12 h. `MainActivity` lê as condições do dispositivo e o `Handler` apenas agenda a próxima execução. O Android ainda pode adiar tarefas quando o app está em segundo plano.
 
+`LatestRequestCoordinator` controla o token e a tarefa cancelável da consulta PTAX selecionada. Ao trocar a moeda ou destruir a atividade, o token é invalidado e o `Future` é cancelado; uma resposta só é aplicada se ainda pertencer ao pedido corrente e à moeda visível. A consulta de mercado, ações e históricos ainda usa controles locais próprios e é uma extração futura.
+
 ### Apresentação
 
 A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia abre sua própria atividade. Dentro de Moedas, navegação adicional isola Cotação, Gráfico, PTAX, Converter e Outras. Assim, o cliente abre apenas o assunto escolhido e não precisa percorrer uma única página longa.
@@ -59,7 +61,7 @@ A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia
 
 ## Refatoração incremental restante
 
-O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Foram extraídos o caso de uso, o adaptador e a apresentação do conversor, além da política pura de intervalos de atualização; os serviços Android continuam adaptadores de ambiente. Próxima iteração: coordenar consultas de mercado com dependências explícitas e testes de cancelamento/concorrência. Não se considera toda a aplicação migrada para Clean Architecture.
+O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Foram extraídos o caso de uso, o adaptador e a apresentação do conversor, a política pura de intervalos e o controle latest-only da consulta PTAX selecionada. Próxima iteração: unificar gradualmente os demais carregamentos com dependências explícitas e testes de cancelamento/concorrência. Não se considera toda a aplicação migrada para Clean Architecture.
 
 ## Distribuição externa
 

@@ -92,7 +92,7 @@ Os testes deste projeto cobrem parsing, cache, datas, séries reais, lacunas, se
 
 - `src/br/com/cambioclaro/app/`: apresentação Android, integrações atuais, domínio, gráficos, alertas e widgets.
 - `src/br/com/cambioclaro/app/conversion/`: caso de uso de conversão, contrato/adaptador de cotações e apresentação do conversor testáveis sem Android.
-- `src/br/com/cambioclaro/app/market/application/`: política de atualização do mercado testável sem Android.
+- `src/br/com/cambioclaro/app/market/application/`: política de atualização e coordenação da consulta PTAX testáveis sem Android.
 - `src/br/com/cambioclaro/app/updates/`: metadados de Release, cliente GitHub, verificação/instalação de APK e notificação, divididos por responsabilidade.
 - `MarketArchive.java` / `MarketArchiveDb.java`: fachada de repositório, migração assíncrona e tabelas SQLite separadas por série.
 - `res/`: layouts, ícones, strings e estilos Android.
@@ -104,6 +104,7 @@ Os testes deste projeto cobrem parsing, cache, datas, séries reais, lacunas, se
 - `TESTE-ARQUITETURA-1.8.0.md`: escopo, critérios de aceite e evidência da primeira extração do conversor.
 - `TESTE-ARQUITETURA-2.md`: critérios e evidências da política de atualização e economia de dados/bateria.
 - `TESTE-ARQUITETURA-3.md`: critérios e evidências do apresentador do conversor.
+- `TESTE-ARQUITETURA-4.md`: critérios e evidências de cancelamento e concorrência para a consulta PTAX.
 
 ## Histórico de versões
 

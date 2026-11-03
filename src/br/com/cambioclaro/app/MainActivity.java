@@ -19,6 +19,7 @@ import br.com.cambioclaro.app.conversion.domain.ConversionResult;
 import br.com.cambioclaro.app.conversion.presentation.ConversionDisplay;
 import br.com.cambioclaro.app.conversion.presentation.ConversionPresenter;
 import br.com.cambioclaro.app.market.application.MarketRefreshPolicy;
+import br.com.cambioclaro.app.market.application.LatestRequestCoordinator;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -30,8 +31,7 @@ public final class MainActivity extends Activity {
     private int BG=0xFF0A141C,CARD=0xFF12232E,TEXT=0xFFF2F6F8,MUTED=0xFF9FB3C1,MINT=0xFF66E0BF,AMBER=0xFFF3C976;
     private final Locale br=new Locale("pt","BR");
     private final ExecutorService worker=Executors.newFixedThreadPool(2);
-    private Future<?> request;
-    private int generation=0;
+    private final LatestRequestCoordinator ptaxRequests=new LatestRequestCoordinator();
     private FxCurrency currency=FxCurrency.USD;
     private boolean tourismMode=false,tourismLoading=false;
     private FxCurrency converterCurrency=FxCurrency.USD;
@@ -157,7 +157,7 @@ public final class MainActivity extends Activity {
             @Override public View getView(int pos,View old,ViewGroup parent){TextView t=label(getItem(pos).toString()+"   ▾",16,TEXT,true);t.setPadding(dp(14),dp(15),dp(14),dp(15));return t;}
             @Override public View getDropDownView(int pos,View old,ViewGroup parent){TextView t=label(getItem(pos).toString(),15,TEXT,false);t.setPadding(dp(16),dp(14),dp(16),dp(14));return t;}
         };selector.setAdapter(adapter);selector.setSelection(currency.ordinal());add(currencyQuoteSection,selector,10);
-        selector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int position,long id){FxCurrency next=FxCurrency.values()[position];if(next==currency)return;generation++;if(request!=null)request.cancel(true);loading=false;confirmed=false;currency=next;tourismMode=next==FxCurrency.USD&&Preferences.prefs(MainActivity.this).getBoolean("usd_tourism",false);RateStore.select(MainActivity.this,currency);prefs=RateStore.prefs(MainActivity.this,currency);readCache();updateDisplay();CambioWidget.renderAll(MainActivity.this,null);load();if(marketPeriodDays>1)loadDailyPeriod(currency,marketPeriodDays);}});
+        selector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int position,long id){FxCurrency next=FxCurrency.values()[position];if(next==currency)return;ptaxRequests.invalidate();loading=false;confirmed=false;currency=next;tourismMode=next==FxCurrency.USD&&Preferences.prefs(MainActivity.this).getBoolean("usd_tourism",false);RateStore.select(MainActivity.this,currency);prefs=RateStore.prefs(MainActivity.this,currency);readCache();updateDisplay();CambioWidget.renderAll(MainActivity.this,null);load();if(marketPeriodDays>1)loadDailyPeriod(currency,marketPeriodDays);}});
         usdModes=row();commercialButton=button("Dólar comercial");tourismButton=button("Dólar turismo");usdModes.addView(commercialButton,new LinearLayout.LayoutParams(0,dp(48),1));LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,dp(48),1);tp.leftMargin=dp(8);usdModes.addView(tourismButton,tp);add(currencyQuoteSection,usdModes,8);
         commercialButton.setOnClickListener(v->selectUsdMode(false));tourismButton.setOnClickListener(v->selectUsdMode(true));
         favoriteButton=button("");favoriteButton.setOnClickListener(v->{Preferences.favorite(this,currency,!Preferences.favorite(this,currency));updateFavorite();reorderOverview();});add(currencyQuoteSection,favoriteButton,8);
@@ -370,14 +370,14 @@ public final class MainActivity extends Activity {
         loadStocks();
         loadHistory(currency);
         refreshOverview();
-        final int token=++generation;final FxCurrency requestedCurrency=currency;
+        final long token=ptaxRequests.begin();final FxCurrency requestedCurrency=currency;
         statusText.setText(rates.isEmpty()?"Consultando o Banco Central…":"Consultando a fonte • exibindo dados salvos");statusText.setTextColor(AMBER);
-        request=worker.submit(()->{
+        Future<?> task=worker.submit(()->{
             try {
                 LocalDate today=BcbClient.today();String raw=BcbClient.fetch(today,requestedCurrency);List<Rate> data=BcbClient.parse(raw,today,requestedCurrency);long fetched=System.currentTimeMillis();
                 // Never replace a newer valid observation with a regressed response.
                 runOnUiThread(()->{
-                    if(isDestroyed()||token!=generation||requestedCurrency!=currency)return;
+                    if(isDestroyed()||!ptaxRequests.isCurrent(token)||requestedCurrency!=currency)return;
                     if(!rates.isEmpty() && data.get(data.size()-1).at.isBefore(rates.get(rates.size()-1).at)){
                         completeError("A fonte retornou dados mais antigos. Mantivemos a última consulta válida.");return;
                     }
@@ -388,8 +388,9 @@ public final class MainActivity extends Activity {
                     loading=false;refresh.setEnabled(true);refresh.setText("Atualizar ↻");updateDisplay();
                     statusText.setText("PTAX consultada em "+Instant.ofEpochMilli(fetchedAt).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm",br))+" (Brasília)");statusText.setTextColor(MINT);
                 });
-            }catch(Exception ex){Diagnostics.record(getApplicationContext(),"consulta PTAX "+requestedCurrency.name(),ex);runOnUiThread(()->{if(!isDestroyed()&&token==generation&&requestedCurrency==currency)completeError(friendly(ex));});}
+            }catch(Exception ex){if(Thread.currentThread().isInterrupted())return;Diagnostics.record(getApplicationContext(),"consulta PTAX "+requestedCurrency.name(),ex);runOnUiThread(()->{if(!isDestroyed()&&ptaxRequests.isCurrent(token)&&requestedCurrency==currency)completeError(friendly(ex));});}
         });
+        ptaxRequests.attach(token,task);
     }
     private String friendly(Exception ex){
         if(ex instanceof java.net.UnknownHostException || ex instanceof java.net.ConnectException)return "Sem conexão com a fonte. Verifique sua internet e tente atualizar.";
@@ -532,7 +533,7 @@ public final class MainActivity extends Activity {
     }
     private void openSource(){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(BcbClient.url(BcbClient.today(),currency))));}catch(ActivityNotFoundException ex){new AlertDialog.Builder(this).setTitle("Fonte oficial").setMessage(BcbClient.INFO).setPositiveButton("OK",null).show();}}
     @Override public void onSaveInstanceState(Bundle b){super.onSaveInstanceState(b);b.putInt("days",days);b.putInt("marketPeriodDays",marketPeriodDays);b.putString("section",selectedSection);b.putString("currencySection",selectedCurrencySection);b.putBoolean("ptaxOpen",ptaxOpen);b.putString("converterCurrency",converterCurrency.name());b.putBoolean("converterTourism",converterTourismMode);b.putString("amount",amount.getText().toString());Preferences.prefs(this).edit().putString("amount",amount.getText().toString()).apply();}
-    @Override public void onDestroy(){generation++;autoHandler.removeCallbacks(autoRefresh);worker.shutdownNow();super.onDestroy();}
+    @Override public void onDestroy(){ptaxRequests.invalidate();autoHandler.removeCallbacks(autoRefresh);worker.shutdownNow();super.onDestroy();}
     @Override public void onPause(){foreground=false;autoHandler.removeCallbacks(autoRefresh);super.onPause();}
     @Override public void onResume(){super.onResume();if(themeMode!=null&&(!themeMode.equals(Preferences.prefs(this).getString("theme","system"))||light!=Preferences.light(this))){recreate();return;}CambioWidget.syncAlertSchedule(this);refreshFutures();foreground=true;autoHandler.removeCallbacks(autoRefresh);autoHandler.postDelayed(autoRefresh,foregroundRefreshInterval());if(rateText!=null&&!loading){readCache();market=MarketStore.read(this);confirmed=false;updateDisplay();if(fetchedAt==0||System.currentTimeMillis()-fetchedAt>FULL_REFRESH_MS)load();else{lastFullRefresh=System.currentTimeMillis();loadMarket(false);if(System.currentTimeMillis()-lastHistoryRefresh>=historyRefreshInterval()){if(tourismMode)loadTourism();else loadHistory(currency);lastHistoryRefresh=System.currentTimeMillis();}if(System.currentTimeMillis()-lastStocksRefresh>=foregroundRefreshInterval()*5){loadStocks();lastStocksRefresh=System.currentTimeMillis();}statusText.setText("Consulta PTAX salva em "+Instant.ofEpochMilli(fetchedAt).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm",br))+" (Brasília)");statusText.setTextColor(MUTED);}}refreshOverview();if(marketPeriodDays>1)loadDailyPeriod(currency,marketPeriodDays);}
 
