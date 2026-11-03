@@ -104,6 +104,7 @@ Os testes deste projeto cobrem parsing, cache, datas, séries reais, lacunas, se
 - A lista compacta de moedas também usa um apresentador que identifica se o valor veio do mercado ou da PTAX.
 - Em `market/domain`, comparação entre moedas usa apenas datas de publicação comuns e mantém séries imutáveis.
 - A seleção dos contratos WIN, DOL e WDO e a geração dos tickers por vencimento ficam em `market/domain/FuturesContracts.java`, baseadas no calendário oficial B3 publicado para 2026–2027. Isso é apenas o calendário: preços futuros seguem indisponíveis até integração autorizada com fornecedor.
+- `FuturesContractPresenter` organiza o vencimento e explicita na tela quando cotação, variação, horário e atraso não estão disponíveis; a Activity não preenche esses dados.
 - `AndroidEconomySources.java`: adaptadores Android para SGS/Focus, histórico macroeconômico e feeds oficiais; a coordenação resiliente dos lotes fica no caso de uso `RefreshSources`.
 - `EconomyFreshnessPolicy`: regra testável dos intervalos de validade do cache de indicadores e notícias.
 - `PtaxRefreshPolicy`: política testável dos intervalos PTAX usados no resumo e no widget.

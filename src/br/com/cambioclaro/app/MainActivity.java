@@ -39,6 +39,7 @@ import br.com.cambioclaro.app.market.presentation.PtaxQuoteDisplay;
 import br.com.cambioclaro.app.market.presentation.CurrencyOverviewPresenter;
 import br.com.cambioclaro.app.market.presentation.CurrencyOverviewDisplay;
 import br.com.cambioclaro.app.market.domain.FuturesContracts;
+import br.com.cambioclaro.app.market.presentation.FuturesContractPresenter;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -454,6 +455,7 @@ public final class MainActivity extends Activity {
         if(quote.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today()))observations.put(quote.at,new MarketHistory.Point(quote.at,quote.ask));return new ArrayList<>(observations.values());
     }
     private void refreshFutures(){
+        FuturesContractPresenter presenter=new FuturesContractPresenter();
         LocalDate today=BcbClient.today();
         for(String base:futuresSelectors.keySet()){
             Spinner spinner=futuresSelectors.get(base);TextView details=futuresDetails.get(base);
@@ -473,7 +475,7 @@ public final class MainActivity extends Activity {
                 @Override public void onItemSelected(AdapterView<?> p,View v,int position,long id){
                     FuturesContracts c=choices.get(position);
                     Preferences.prefs(MainActivity.this).edit().putString("futures_contract_"+base,c.symbol).apply();
-                    details.setText("Variação —   ·   Atualização —   ·   Atraso —\nVencimento "+c.expiry.getMonthValue()+"/"+c.expiry.getYear()+"   ·   último pregão "+c.lastTrade.format(dayFormat));
+                    details.setText(presenter.present(c).details);
                 }
             });
         }

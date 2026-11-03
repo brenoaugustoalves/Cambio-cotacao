@@ -80,6 +80,8 @@ O simulador de custos foi organizado em `economy/domain`, `economy/application` 
 
 `market.domain.FuturesContracts` contém o calendário publicado pela B3 para WIN, DOL e WDO em 2026–2027. A seleção do contrato e a composição do ticker (ativo + letra do mês + ano) são regras Java puro testáveis sem Android. O calendário informa vencimento e último dia de negociação; após o período publicado, o domínio retorna indisponível em vez de projetar datas. A cotação de futuros continua sem integração até haver fornecedor, custo e direito de exibição confirmados.
 
+`FuturesContractPresenter` transforma o contrato selecionado em texto para a tela e marca cotação, variação, horário e atraso como indisponíveis enquanto não houver provedor. `MainActivity` apenas conecta seleção e view, sem montar os textos de negócio.
+
 ### Apresentação
 
 A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia abre sua própria atividade. Dentro de Moedas, navegação adicional isola Cotação, Gráfico, PTAX, Converter e Outras. Assim, o cliente abre apenas o assunto escolhido e não precisa percorrer uma única página longa.
