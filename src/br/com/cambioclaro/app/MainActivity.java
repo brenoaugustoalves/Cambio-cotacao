@@ -31,6 +31,9 @@ import br.com.cambioclaro.app.market.application.RefreshTourismQuotes;
 import br.com.cambioclaro.app.market.application.TourismRefreshResult;
 import br.com.cambioclaro.app.market.application.PtaxRefreshPolicy;
 import br.com.cambioclaro.app.market.domain.Comparison;
+import br.com.cambioclaro.app.market.domain.MarketObservation;
+import br.com.cambioclaro.app.market.presentation.MarketQuotePresenter;
+import br.com.cambioclaro.app.market.presentation.MarketQuoteDisplay;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -54,6 +57,7 @@ public final class MainActivity extends Activity {
     private StorePtaxRates ptaxStore;
     private RefreshPtaxRates ptaxRefresh;
     private RefreshTourismQuotes tourismRefresh;
+    private final MarketQuotePresenter marketQuotePresenter=new MarketQuotePresenter();
     private boolean ptaxOpen=false;
     public static final long AUTO_REFRESH_MS=MarketRefreshPolicy.foregroundInterval(false,false);
     private static final long FULL_REFRESH_MS=MarketRefreshPolicy.FULL_REFRESH_INTERVAL_MS;
@@ -419,27 +423,11 @@ public final class MainActivity extends Activity {
         marketSourceNote.setText(tourismMode?"Dólar turismo · venda (ask) · AwesomeAPI · sem IOF/tarifas":"Venda (ask) · AwesomeAPI · referência, não preço final");
         intradaySourceNote.setText(tourismMode?"Dólar turismo · venda (ask) · AwesomeAPI":"Moeda selecionada acima · venda (ask) · AwesomeAPI");
         MarketClient.Quote current=tourismMode?Tourism.latest(this):MarketStore.latest(this,currency);
-        if(current==null){marketRate.setText("—");marketMove.setText("Variação de mercado indisponível");marketDate.setText("Sem cotação de mercado recebida");setMarketFreshness("Sem cotação recebida · toque em Atualizar",true);}
-        else{
-            marketRate.setText(money(current.ask,currency==FxCurrency.USD?2:4));
-            if(currency==FxCurrency.USD)marketSourceNote.setText("Taxa exata: "+money(current.ask,4)+" · venda (ask) · AwesomeAPI"+(tourismMode?" · sem IOF/tarifas":""));
-            TreeMap<Instant,BigDecimal> sequence=new TreeMap<>();for(MarketHistory.Point point:tourismMode?Tourism.readHistory(this):MarketHistory.read(this,currency))sequence.put(point.at,point.ask);
-            if(current.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today()))sequence.put(current.at,current.ask);
-            if(sequence.size()<2){marketMove.setText("Variação indisponível: aguardando outra publicação de hoje");marketMove.setTextColor(MUTED);}
-            else{
-                Map.Entry<Instant,BigDecimal> latest=sequence.lastEntry(),previous=sequence.lowerEntry(latest.getKey());
-                BigDecimal sincePrevious=Rate.variation(previous.getValue(),latest.getValue());
-                BigDecimal sinceFirst=Rate.variation(sequence.firstEntry().getValue(),latest.getValue());
-                BigDecimal shownPrevious=sincePrevious.setScale(2,java.math.RoundingMode.HALF_UP);
-                String direction=shownPrevious.signum()>0?"▲ Alta ":shownPrevious.signum()<0?"▼ Baixa ":"● Estável ";
-                marketMove.setText(direction+percent(sincePrevious)+" desde a publicação anterior ("+previous.getKey().atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("HH:mm",br))+")\n"+percent(sinceFirst)+" desde a 1ª observação de hoje ("+sequence.firstKey().atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("HH:mm",br))+")");
-                marketMove.setTextColor(shownPrevious.signum()>0?MINT:shownPrevious.signum()<0?(light?0xFFA33122:0xFFF2B5A9):MUTED);
-            }
-            ZonedDateTime at=current.at.atZone(BcbClient.ZONE);
-            marketDate.setText("Publicada em "+at.format(DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm",br))+" (Brasília)");
-            if(at.toLocalDate().equals(BcbClient.today())){long age=Math.max(0,Duration.between(current.at,Instant.now()).toMinutes());setMarketFreshness(age>=10?"Atrasada · publicada há "+age+" min":"Atualizada há "+age+" min · pode haver atraso na fonte",age>=10);}
-            else setMarketFreshness("Sem dado de hoje · última publicação em "+at.format(DateTimeFormatter.ofPattern("dd/MM HH:mm",br)),true);
-        }
+        List<MarketObservation> observations=new ArrayList<>();for(MarketHistory.Point point:tourismMode?Tourism.readHistory(this):MarketHistory.read(this,currency))observations.add(new MarketObservation(point.ask,point.at));
+        MarketQuoteDisplay quoteDisplay=marketQuotePresenter.present(currency,tourismMode,current==null?null:current.ask,current==null?null:current.at,observations,BcbClient.today(),Instant.now(),BcbClient.ZONE);
+        marketRate.setText(quoteDisplay.rate);marketMove.setText(quoteDisplay.movement);marketDate.setText(quoteDisplay.publishedAt);
+        marketMove.setTextColor(quoteDisplay.direction>0?MINT:quoteDisplay.direction<0?(light?0xFFA33122:0xFFF2B5A9):MUTED);setMarketFreshness(quoteDisplay.freshness,quoteDisplay.stale);
+        if(quoteDisplay.exactRate!=null)marketSourceNote.setText(quoteDisplay.exactRate);
         pairText.setText(tourismMode?"USD turismo / BRL":currency.name()+" / BRL");unitText.setText("1 "+currency.name()+" · "+currency.label.toUpperCase(br));chartUnit.setText("PTAX de venda · R$ por "+currency.name()+" 1");
         if(rates.isEmpty()){rateText.setText("—");quoteDate.setText("Sem cotação recebida da fonte");deltaText.setText("Variação indisponível");}
         else {

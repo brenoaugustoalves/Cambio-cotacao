@@ -70,6 +70,8 @@ O simulador de custos foi organizado em `economy/domain`, `economy/application` 
 
 `MarketMovementPresenter` calcula e formata alta, queda, estabilidade e ponto base a partir de observações tipadas e timestamps publicados. `IntradayMovement` agora é apenas o adaptador entre pontos persistidos Android e o apresentador puro usado pela tela e pelo gráfico acessível.
 
+`MarketQuotePresenter` recebe a cotação de mercado e observações do dia e monta preço, variação, horário e frescor; o modelo não conhece `Activity` nem views. `MainActivity` lê o cache nos adaptadores Android, chama o apresentador e aplica estado/cor nas views.
+
 `market.domain.Comparison` calcula séries de variação somente na interseção das datas publicadas entre moedas. Datas e séries ficam imutáveis; se não existe sobreposição suficiente, o resultado é vazio e não há interpolação.
 
 ### Apresentação
