@@ -20,7 +20,7 @@ public final class WidgetUpdateService extends JobService {
             boolean refreshedMarket=false;
             if(MarketRefreshPolicy.isWidgetMarketRefreshDue(System.currentTimeMillis(),MarketStore.checked(this))){try{AndroidMarketRefreshGateway.create(getApplicationContext()).execute();refreshedMarket=true;}catch(Exception ex){Diagnostics.record(getApplicationContext(),"atualização de mercado do widget",ex);error="Consulta de mercado falhou";}}
             if(!refreshedMarket)for(FxCurrency fx:MarketAlerts.currencies(this))MarketAlerts.evaluate(this,fx,MarketStore.latest(this,fx));
-            if(refreshTourism){try{Tourism.saveLatest(this,Tourism.fetchLatest());Tourism.saveHistory(this,Tourism.fetchHistory());}catch(Exception ex){Diagnostics.record(getApplicationContext(),"atualização de USD turismo do widget",ex);error="Consulta turismo falhou";}}
+            if(refreshTourism){br.com.cambioclaro.app.market.application.TourismRefreshResult tourism=AndroidTourismGateway.create(getApplicationContext()).execute(System.currentTimeMillis(),1,true);if(tourism.latestError!=null){Diagnostics.record(getApplicationContext(),"atualização USD turismo do widget",tourism.latestError);error="Cotação turismo indisponível";}if(tourism.historyError!=null){Diagnostics.record(getApplicationContext(),"histórico USD turismo do widget",tourism.historyError);error="Histórico turismo indisponível";}}
             br.com.cambioclaro.app.market.application.StorePtaxRates ptaxStore=AndroidPtaxGateway.createStore(getApplicationContext());
             for(FxCurrency currency:targets){
                 if(Thread.currentThread().isInterrupted())return;

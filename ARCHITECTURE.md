@@ -48,6 +48,8 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 `StorePtaxRates` busca/valida a publicação, rejeita regressão temporal e grava no repositório; `RefreshPtaxRates` só avalia alertas após a gravação. `AndroidPtaxGateway` adapta fonte BCB, `RateStore` e alertas. O simulador usa apenas o caso de armazenamento e não ativa alertas; tela principal, resumo e widget reutilizam esses fluxos.
 
+`RefreshTourismQuotes` controla cotação USD turismo e histórico como atualizações independentes. Cada fluxo usa seu próprio instante de última consulta; falha num deles não bloqueia o outro. `AndroidTourismGateway` conecta o caso de uso à AwesomeAPI e ao cache existente. Tela principal e widget compartilham essa política; atualização explícita do widget força ambas as consultas.
+
 `RefreshMarketQuotes` coordena o lote usado pela tela principal e pelo widget: fonte → repositório → observações por moeda → arquivo de histórico e alertas. `StoreMarketBatch` compartilha somente busca e persistência com o simulador, sem acionar alertas. `RefreshStockQuotes` mantém erros independentes para ações e Ibovespa. `RefreshMarketHistory` separa carregamentos intradiários e diários e limita a janela pedida ao provedor; `AndroidMarketHistoryGateway` valida e grava cada série no seu repositório.
 
 ### Apresentação
@@ -65,7 +67,7 @@ A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia
 
 ## Refatoração incremental restante
 
-`MainActivity` ainda constrói várias telas e conserva a coordenação visual de turismo, carregamentos e callbacks. `WidgetUpdateService` também coordena turismo e ciclo do JobScheduler. `EconomyActivity` ainda coordena downloads SGS, Focus, notícias e histórico; essas fontes não foram migradas para casos de uso nesta etapa. Os fluxos de conversão, PTAX, mercado, ações e históricos foram separados e testados, mas a aplicação inteira ainda não está migrada para Clean Architecture. Próximos passos são extrair turismo e dados macro/notícias, depois separar componentes de apresentação sem mudar os contratos públicos.
+`MainActivity` ainda constrói várias telas e conserva a coordenação visual dos carregamentos e callbacks. `WidgetUpdateService` coordena o ciclo do JobScheduler. `EconomyActivity` ainda coordena downloads SGS, Focus, notícias e histórico; essas fontes não foram migradas para casos de uso nesta etapa. Os fluxos de conversão, PTAX, mercado, ações, turismo e históricos foram separados e testados, mas a aplicação inteira ainda não está migrada para Clean Architecture. Próximos passos são extrair dados macro/notícias e depois separar componentes de apresentação sem mudar os contratos públicos.
 
 ## Distribuição externa
 

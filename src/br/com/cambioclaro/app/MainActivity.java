@@ -27,6 +27,8 @@ import br.com.cambioclaro.app.market.application.RefreshMarketHistory;
 import br.com.cambioclaro.app.market.application.RefreshPtaxRates;
 import br.com.cambioclaro.app.market.application.StorePtaxRates;
 import br.com.cambioclaro.app.market.application.StoredPtaxRates;
+import br.com.cambioclaro.app.market.application.RefreshTourismQuotes;
+import br.com.cambioclaro.app.market.application.TourismRefreshResult;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -49,6 +51,7 @@ public final class MainActivity extends Activity {
     private RefreshMarketHistory marketHistoryRefresh;
     private StorePtaxRates ptaxStore;
     private RefreshPtaxRates ptaxRefresh;
+    private RefreshTourismQuotes tourismRefresh;
     private boolean ptaxOpen=false;
     public static final long AUTO_REFRESH_MS=MarketRefreshPolicy.foregroundInterval(false,false);
     private static final long FULL_REFRESH_MS=MarketRefreshPolicy.FULL_REFRESH_INTERVAL_MS;
@@ -142,7 +145,7 @@ public final class MainActivity extends Activity {
         Uri launchData=getIntent().getData();if(launchData!=null&&"cambioclaro".equals(launchData.getScheme())&&"widget".equals(launchData.getHost()))Diagnostics.widgetEvent(this,"cotacao tocada; tela aberta");
         if(light){BG=0xFFF1F5F7;CARD=0xFFFFFFFF;TEXT=0xFF132A35;MUTED=0xFF476271;MINT=0xFF086A53;AMBER=0xFF805300;}
         String incoming=getIntent().getStringExtra("currency");if(incoming!=null)try{RateStore.select(this,FxCurrency.valueOf(incoming));}catch(IllegalArgumentException ignored){}
-        boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);conversionUseCase=new ConvertCurrency(new AndroidConversionQuoteSource(getApplicationContext()));marketQuoteRefresh=AndroidMarketRefreshGateway.create(getApplicationContext());stockQuoteRefresh=new RefreshStockQuotes(new AndroidStockQuoteGateway(getApplicationContext()));marketHistoryRefresh=AndroidMarketHistoryGateway.create(getApplicationContext());ptaxStore=AndroidPtaxGateway.createStore(getApplicationContext());ptaxRefresh=AndroidPtaxGateway.create(getApplicationContext());
+        boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);conversionUseCase=new ConvertCurrency(new AndroidConversionQuoteSource(getApplicationContext()));marketQuoteRefresh=AndroidMarketRefreshGateway.create(getApplicationContext());stockQuoteRefresh=new RefreshStockQuotes(new AndroidStockQuoteGateway(getApplicationContext()));marketHistoryRefresh=AndroidMarketHistoryGateway.create(getApplicationContext());ptaxStore=AndroidPtaxGateway.createStore(getApplicationContext());ptaxRefresh=AndroidPtaxGateway.create(getApplicationContext());tourismRefresh=AndroidTourismGateway.create(getApplicationContext());
         try{converterCurrency=FxCurrency.valueOf(Preferences.prefs(this).getString("converter_currency",currency.name()));}catch(IllegalArgumentException ignored){converterCurrency=currency;}converterTourismMode=converterCurrency==FxCurrency.USD&&Preferences.prefs(this).getBoolean("converter_usd_tourism",tourismMode);
         if(saved!=null){days=saved.getInt("days",30);ptaxOpen=saved.getBoolean("ptaxOpen",false);marketPeriodDays=saved.getInt("marketPeriodDays",1);selectedSection=saved.getString("section","Moedas");selectedCurrencySection=saved.getString("currencySection","Cotação");try{converterCurrency=FxCurrency.valueOf(saved.getString("converterCurrency",converterCurrency.name()));}catch(IllegalArgumentException ignored){}converterTourismMode=converterCurrency==FxCurrency.USD&&saved.getBoolean("converterTourism",converterTourismMode);}
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
@@ -306,11 +309,9 @@ public final class MainActivity extends Activity {
     private void loadTourism(){
         if(tourismLoading)return;tourismLoading=true;
         worker.execute(()->{
-            String error=null;
-            long interval=historyRefreshInterval();long checked=getSharedPreferences("tourism_v1",MODE_PRIVATE).getLong("checked",0);
-            if(System.currentTimeMillis()-checked>=interval){try{Tourism.saveLatest(this,Tourism.fetchLatest());}catch(Exception ex){Diagnostics.record(getApplicationContext(),"consulta USD turismo",ex);error="Consulta turismo falhou";}}
-            long historyChecked=getSharedPreferences("tourism_v1",MODE_PRIVATE).getLong("history_checked",0);
-            if(System.currentTimeMillis()-historyChecked>=interval){try{Tourism.saveHistory(this,Tourism.fetchHistory());}catch(Exception ex){Diagnostics.record(getApplicationContext(),"histórico USD turismo",ex);error="Histórico turismo indisponível";}}
+            TourismRefreshResult result=tourismRefresh.execute(System.currentTimeMillis(),historyRefreshInterval(),false);String error=null;
+            if(result.latestError!=null){Diagnostics.record(getApplicationContext(),"consulta USD turismo",result.latestError);error="Consulta turismo falhou";}
+            if(result.historyError!=null){Diagnostics.record(getApplicationContext(),"histórico USD turismo",result.historyError);error=error==null?"Histórico turismo indisponível":error+"; histórico indisponível";}
             final String failure=error;runOnUiThread(()->{tourismLoading=false;if(!isDestroyed()){updateDisplay();CambioWidget.renderAll(this,null);if(failure!=null&&tourismMode)setMarketFreshness(failure+" · último dado salvo, se houver",true);}});
         });
     }
