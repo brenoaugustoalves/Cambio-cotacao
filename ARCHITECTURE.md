@@ -54,6 +54,8 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 `EconomyFreshnessPolicy` centraliza a regra pura de validade do cache (timestamp ausente, vencido, futuro após recuo do relógio e limite da janela). Os clientes Android de SGS/Focus, histórico e notícias leem seus horários locais e delegam a decisão a essa política, com TTLs próprios por tipo de conteúdo.
 
+`EconomyPresenter` transforma observações SGS e expectativas Focus em `EconomyDisplay`, sem depender de `Activity`, widgets Android ou fonte de dados. Locale, precisão decimal, horários, unidades, falta de observações e falha parcial têm testes próprios. `EconomyActivity` apenas adapta os modelos carregados e vincula o resultado aos `TextView`.
+
 `PtaxRefreshPolicy` define quando cabe consultar novamente a PTAX salva no widget e no resumo, com intervalos explícitos e tratamento de timestamp futuro sem tempestade de chamadas.
 
 `RefreshMarketQuotes` coordena o lote usado pela tela principal e pelo widget: fonte → repositório → observações por moeda → arquivo de histórico e alertas. `StoreMarketBatch` compartilha somente busca e persistência com o simulador, sem acionar alertas. `RefreshStockQuotes` mantém erros independentes para ações e Ibovespa. `RefreshMarketHistory` separa carregamentos intradiários e diários e limita a janela pedida ao provedor; `AndroidMarketHistoryGateway` valida e grava cada série no seu repositório.

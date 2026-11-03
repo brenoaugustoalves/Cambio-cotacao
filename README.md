@@ -92,6 +92,7 @@ Os testes deste projeto cobrem parsing, cache, datas, séries reais, lacunas, se
 
 - `src/br/com/cambioclaro/app/`: apresentação Android, integrações atuais, domínio, gráficos, alertas e widgets.
 - `src/br/com/cambioclaro/app/conversion/`: caso de uso de conversão, contrato/adaptador de cotações e apresentação do conversor testáveis sem Android.
+- `src/br/com/cambioclaro/app/economy/presentation/`: modelo e apresentação dos indicadores/expectativas, testáveis sem Android.
 - `src/br/com/cambioclaro/app/market/application/`: casos de uso e contratos para PTAX, mercado, ações e históricos, testáveis sem Android.
 - `AndroidEconomySources.java`: adaptadores Android para SGS/Focus, histórico macroeconômico e feeds oficiais; a coordenação resiliente dos lotes fica no caso de uso `RefreshSources`.
 - `EconomyFreshnessPolicy`: regra testável dos intervalos de validade do cache de indicadores e notícias.
