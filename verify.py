@@ -12,10 +12,11 @@ if not PLATFORM.exists():PLATFORM=SDK/'platforms/android-37/android.jar'
 WINDOWS=os.name=='nt';ANDROID_NS='{http://schemas.android.com/apk/res/android}'
 def jdk_tool(name):return JDK/'bin'/(name+('.exe' if WINDOWS else ''))
 VERSION=ET.parse(ROOT/'AndroidManifest.xml').getroot().attrib[ANDROID_NS+'versionName']
-def run(cmd):
-    result=subprocess.run([str(s) for s in cmd],cwd=ROOT,capture_output=True,text=True,encoding='utf8',errors='replace')
+def run(cmd,cwd=ROOT):
+    result=subprocess.run([str(s) for s in cmd],cwd=cwd,capture_output=True,text=True,encoding='utf8',errors='replace')
     print(result.stdout);print(result.stderr,file=sys.stderr);result.check_returncode();return result.stdout
 run([sys.executable,'build.py'])
+run([sys.executable,'-m','unittest','-v'],cwd=ROOT/'server')
 classes=ROOT/'build/test-classes';classes.mkdir(exist_ok=True)
 conversion=ROOT/'src/br/com/cambioclaro/app/conversion'
 economy_presentation=ROOT/'src/br/com/cambioclaro/app/economy/presentation'
