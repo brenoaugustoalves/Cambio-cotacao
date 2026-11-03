@@ -19,14 +19,18 @@ run([sys.executable,'build.py'])
 classes=ROOT/'build/test-classes';classes.mkdir(exist_ok=True)
 conversion=ROOT/'src/br/com/cambioclaro/app/conversion'
 economy_presentation=ROOT/'src/br/com/cambioclaro/app/economy/presentation'
+economy_domain=ROOT/'src/br/com/cambioclaro/app/economy/domain'
+economy_application=ROOT/'src/br/com/cambioclaro/app/economy/application'
 run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
-     ROOT/'src/br/com/cambioclaro/app/Rate.java',ROOT/'src/br/com/cambioclaro/app/EconomicSimulator.java',
+     ROOT/'src/br/com/cambioclaro/app/Rate.java',economy_domain/'EconomicSimulator.java',
      conversion/'domain/ConversionQuote.java',conversion/'domain/ConversionRequest.java',
      conversion/'domain/ConversionResult.java',conversion/'application/ConversionQuoteSource.java',
      conversion/'application/ConvertCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/application/MarketRefreshPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/LatestRequestCoordinator.java',
      conversion/'presentation/ConversionDisplay.java',conversion/'presentation/ConversionPresenter.java',
      economy_presentation/'EconomyDisplay.java',economy_presentation/'EconomyPresenter.java',
+     economy_domain/'EconomicQuoteReference.java',economy_application/'EconomicQuoteProvider.java',
+     economy_application/'EconomicScenario.java',economy_application/'CalculateEconomicScenario.java',
      ROOT/'src/br/com/cambioclaro/app/FxCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/domain/MarketObservation.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteSource.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteRepository.java',
@@ -56,7 +60,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
-     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java'])
+     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
@@ -85,6 +89,8 @@ ptax_policy_results=run([jdk_tool('java'),'-cp',classes,'PtaxRefreshPolicyTest']
 (ROOT/'build/ptax-policy-results.txt').write_text(ptax_policy_results,encoding='utf8')
 economy_presentation_results=run([jdk_tool('java'),'-cp',classes,'EconomyPresenterTest'])
 (ROOT/'build/economy-presentation-results.txt').write_text(economy_presentation_results,encoding='utf8')
+economic_scenario_results=run([jdk_tool('java'),'-cp',classes,'CalculateEconomicScenarioTest'])
+(ROOT/'build/economic-scenario-results.txt').write_text(economic_scenario_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')

@@ -1,5 +1,5 @@
 import br.com.cambioclaro.app.Rate;
-import br.com.cambioclaro.app.EconomicSimulator;
+import br.com.cambioclaro.app.economy.domain.EconomicSimulator;
 import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;

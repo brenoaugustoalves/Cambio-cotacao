@@ -13,11 +13,12 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.content.Intent;
 import android.net.Uri;
-import br.com.cambioclaro.app.market.application.StoreMarketBatch;
-import br.com.cambioclaro.app.market.application.StorePtaxRates;
 import br.com.cambioclaro.app.market.application.RefreshSources;
 import br.com.cambioclaro.app.economy.presentation.EconomyPresenter;
 import br.com.cambioclaro.app.economy.presentation.EconomyDisplay;
+import br.com.cambioclaro.app.economy.application.CalculateEconomicScenario;
+import br.com.cambioclaro.app.economy.application.EconomicScenario;
+import br.com.cambioclaro.app.economy.domain.EconomicSimulator;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -31,15 +32,14 @@ import java.util.List;
 /** Macro overview. Observed data and Focus market expectations are deliberately separate. */
 public final class EconomyActivity extends Activity {
     private final ExecutorService worker=Executors.newFixedThreadPool(3);private final Handler main=new Handler(Looper.getMainLooper());
-    private StoreMarketBatch marketBatch;private AndroidEconomySources economySources;private final RefreshSources refreshSources=new RefreshSources();private final EconomyPresenter economyPresenter=new EconomyPresenter();
-    private StorePtaxRates ptaxStore;
+    private AndroidEconomySources economySources;private final RefreshSources refreshSources=new RefreshSources();private final EconomyPresenter economyPresenter=new EconomyPresenter();private CalculateEconomicScenario scenarioUseCase;
     private UiStyle style;private LinearLayout body,newsItems,globalNewsItems,historyItems;private TextView status,selic,ipca,focusIpca,focusSelic,focusFx,focusPib,scenarioStatus,scenarioResult,newsStatus,globalNewsStatus,historyStatus;private Button refresh,calculateScenario;private Spinner scenarioCurrency,scenarioSource;private EditText scenarioAmount,scenarioSpread,scenarioExtra,scenarioFixed;private boolean loading,scenarioLoading,newsLoading,globalNewsLoading,historyLoading;
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private TextView text(String value,int size,boolean bold){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTypeface(android.graphics.Typeface.create("sans-serif",bold?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL));style.text(t);return t;}
     private EditText input(String hint,String description){EditText e=new EditText(this);style.input(e);e.setHint(hint);e.setContentDescription(description);e.setSingleLine(true);e.setInputType(android.text.InputType.TYPE_CLASS_NUMBER|android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);e.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(24)});return e;}
     private void add(LinearLayout parent,android.view.View child,int top){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(top);parent.addView(child,p);}
     private LinearLayout card(String title){LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setPadding(dp(16),dp(15),dp(16),dp(15));panel.setBackground(style.shape(style.surface));add(body,panel,10);add(panel,text(title,15,true),0);return panel;}
-    @Override public void onCreate(Bundle state){Preferences.theme(this);super.onCreate(state);marketBatch=AndroidMarketRefreshGateway.createBatch(getApplicationContext());ptaxStore=AndroidPtaxGateway.createStore(getApplicationContext());economySources=new AndroidEconomySources(getApplicationContext());style=new UiStyle(this);ScrollView scroll=new ScrollView(this);style.root(scroll);body=new LinearLayout(this);body.setOrientation(1);body.setPadding(dp(20),dp(22),dp(20),dp(28));style.root(body);scroll.addView(body);setContentView(scroll);UiBars.apply(this,style.light);if(android.os.Build.VERSION.SDK_INT>=30)scroll.setOnApplyWindowInsetsListener((v,in)->{android.graphics.Insets bars=in.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());v.setPadding(bars.left,bars.top,bars.right,bars.bottom);return in;});
+    @Override public void onCreate(Bundle state){Preferences.theme(this);super.onCreate(state);economySources=new AndroidEconomySources(getApplicationContext());scenarioUseCase=new CalculateEconomicScenario(new AndroidEconomicQuoteProvider(getApplicationContext()));style=new UiStyle(this);ScrollView scroll=new ScrollView(this);style.root(scroll);body=new LinearLayout(this);body.setOrientation(1);body.setPadding(dp(20),dp(22),dp(20),dp(28));style.root(body);scroll.addView(body);setContentView(scroll);UiBars.apply(this,style.light);if(android.os.Build.VERSION.SDK_INT>=30)scroll.setOnApplyWindowInsetsListener((v,in)->{android.graphics.Insets bars=in.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());v.setPadding(bars.left,bars.top,bars.right,bars.bottom);return in;});
         Button back=new Button(this);back.setText("← Voltar");style.button(back);body.addView(back);back.setOnClickListener(v->finish());add(body,text("Economia brasileira",25,true),12);add(body,text("Indicadores oficiais e expectativas de mercado. Cada número informa sua própria data de referência.",14,false),5);
         refresh=new Button(this);refresh.setText("Atualizar indicadores e notícias");style.button(refresh);add(body,refresh,8);refresh.setOnClickListener(v->{load(true);loadNews(true);loadGlobalNews(true);loadHistory(true);});status=text("Carregando dados salvos…",12,false);add(body,status,10);
         LinearLayout actual=card("DADOS OBSERVADOS · BANCO CENTRAL");selic=text("Meta Selic\nSem dado válido",17,true);add(actual,selic,10);ipca=text("IPCA mensal\nSem dado válido",17,true);add(actual,ipca,12);Button actualSource=new Button(this);actualSource.setText("Abrir séries oficiais SGS");style.button(actualSource);add(actual,actualSource,8);actualSource.setOnClickListener(v->open("https://dadosabertos.bcb.gov.br/dataset?res_format=API"));
@@ -72,8 +72,43 @@ public final class EconomyActivity extends Activity {
     private String number(java.math.BigDecimal value,int digits){NumberFormat f=NumberFormat.getNumberInstance(new Locale("pt","BR"));f.setMinimumFractionDigits(digits);f.setMaximumFractionDigits(digits);return f.format(value.setScale(digits,RoundingMode.HALF_UP));}
     private String date(LocalDate value){return value.format(DateTimeFormatter.ofPattern("dd/MM/uuuu",new Locale("pt","BR")));}
     private void render(EconomyClient.Snapshot data,String failure){EconomyPresenter.Metric selicMetric=data==null||data.selic==null?null:new EconomyPresenter.Metric(data.selic.value,data.selic.date);EconomyPresenter.Metric ipcaMetric=data==null||data.ipca==null?null:new EconomyPresenter.Metric(data.ipca.value,data.ipca.date);java.util.Map<String,EconomyPresenter.Expectation> expected=new java.util.LinkedHashMap<>();if(data!=null)for(java.util.Map.Entry<String,EconomyClient.Point> entry:data.expectations.entrySet()){EconomyClient.Point p=entry.getValue();expected.put(entry.getKey(),new EconomyPresenter.Expectation(p.value,p.unit,p.period,p.date,p.respondents));}EconomyDisplay display=economyPresenter.present(selicMetric,ipcaMetric,expected,data==null?0:data.fetchedAt,System.currentTimeMillis(),failure,BcbClient.ZONE);selic.setText(display.selic);ipca.setText(display.ipca);focusIpca.setText(display.focusIpca);focusSelic.setText(display.focusSelic);focusFx.setText(display.focusFx);focusPib.setText(display.focusPib);status.setText(display.status);}
-    private void calculateScenario(){if(scenarioLoading)return;final FxCurrency currency=(FxCurrency)scenarioCurrency.getSelectedItem();final boolean marketSource=scenarioSource.getSelectedItemPosition()==0;final BigDecimal amount,spread,extra,fixed;try{amount=EconomicSimulator.parse(scenarioAmount.getText().toString(),6,false);spread=EconomicSimulator.parse(scenarioSpread.getText().toString(),2,true);extra=EconomicSimulator.parse(scenarioExtra.getText().toString(),2,true);fixed=EconomicSimulator.parse(scenarioFixed.getText().toString(),2,true);}catch(IllegalArgumentException ex){scenarioResult.setText(ex.getMessage());return;}
-        scenarioLoading=true;calculateScenario.setEnabled(false);calculateScenario.setText("Consultando referência…");scenarioStatus.setText("Buscando a taxa selecionada por HTTPS.");worker.execute(()->{BigDecimal rate=null;String observedAt="",sourceName="",warning=null;try{if(marketSource){sourceName="AwesomeAPI · venda (ask)";try{marketBatch.execute();}catch(Exception failed){warning="Consulta atual falhou; verificando se existe cotação salva.";Diagnostics.record(getApplicationContext(),"simulador / mercado "+currency.name(),failed);}MarketClient.Quote q=MarketStore.latest(getApplicationContext(),currency);if(q==null)throw new java.io.IOException("Sem cotação de mercado válida em cache ou na fonte.");rate=q.ask;if(q.at.isBefore(java.time.Instant.now().minusSeconds(6*60*60L)))warning=(warning==null?"":warning+" ")+"Referência antiga; confira o horário antes de usar.";observedAt=DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm",new Locale("pt","BR")).format(q.at.atZone(BcbClient.ZONE))+" (Brasília)";}else{sourceName="Banco Central · PTAX venda";try{ptaxStore.execute(currency,BcbClient.today());}catch(Exception failed){warning="Consulta atual falhou; verificando se existe PTAX salva.";Diagnostics.record(getApplicationContext(),"simulador / PTAX "+currency.name(),failed);}java.util.List<Rate> values=RateStore.read(getApplicationContext(),currency);if(values.isEmpty())throw new java.io.IOException("Sem PTAX publicada disponível.");Rate last=values.get(values.size()-1);rate=last.sell;observedAt=last.at.format(DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm",new Locale("pt","BR")))+" (Brasília)";if(last.at.toLocalDate().isBefore(BcbClient.today().minusDays(3)))warning=(warning==null?"":warning+" ")+"Última publicação antiga; confira a data.";}}catch(Exception ex){Diagnostics.record(getApplicationContext(),"simulador econômico",ex);warning=(warning==null?"":warning+" ")+"Fonte sem dado válido; nenhum total foi estimado.";}final BigDecimal reference=rate;final String publication=observedAt,source=sourceName,note=warning;main.post(()->{scenarioLoading=false;if(isFinishing()||isDestroyed())return;calculateScenario.setEnabled(true);calculateScenario.setText("Buscar taxa e calcular cenário");if(reference==null){scenarioStatus.setText(note==null?"Fonte indisponível.":note);scenarioResult.setText("Cálculo indisponível sem uma taxa publicada válida.");return;}try{EconomicSimulator.Result result=EconomicSimulator.calculate(amount,reference,spread,extra,fixed);scenarioStatus.setText(source+" · referência publicada em "+publication+(note==null?"":" · "+note));scenarioResult.setText("Base: R$ "+number(result.base,2)+"\nSpread informado: R$ "+number(result.spread,2)+"\nOutros encargos: R$ "+number(result.extra,2)+"\nTarifa fixa: R$ "+number(result.fixedFee,2)+"\nTotal estimado: R$ "+number(result.total,2)+"\nPercentuais calculados sobre o valor-base, sem capitalização.");}catch(IllegalArgumentException ex){scenarioResult.setText("Não foi possível calcular: "+ex.getMessage());}});});}
+    private void calculateScenario(){
+        if(scenarioLoading)return;
+        final FxCurrency currency=(FxCurrency)scenarioCurrency.getSelectedItem();
+        final boolean marketSource=scenarioSource.getSelectedItemPosition()==0;
+        final BigDecimal amount,spread,extra,fixed;
+        try{
+            amount=EconomicSimulator.parse(scenarioAmount.getText().toString(),6,false);
+            spread=EconomicSimulator.parse(scenarioSpread.getText().toString(),2,true);
+            extra=EconomicSimulator.parse(scenarioExtra.getText().toString(),2,true);
+            fixed=EconomicSimulator.parse(scenarioFixed.getText().toString(),2,true);
+        }catch(IllegalArgumentException invalid){scenarioResult.setText(invalid.getMessage());return;}
+        scenarioLoading=true;calculateScenario.setEnabled(false);calculateScenario.setText("Consultando referência…");scenarioStatus.setText("Buscando a taxa selecionada por HTTPS.");
+        worker.execute(()->{
+            try{
+                EconomicScenario scenario=scenarioUseCase.execute(currency,marketSource,amount,spread,extra,fixed,java.time.Instant.now());
+                main.post(()->showScenario(scenario));
+            }catch(Exception unavailable){
+                Diagnostics.record(getApplicationContext(),"simulador econômico",unavailable);
+                main.post(()->showScenarioUnavailable());
+            }
+        });
+    }
+    private void showScenario(EconomicScenario scenario){
+        scenarioLoading=false;if(isFinishing()||isDestroyed())return;
+        calculateScenario.setEnabled(true);calculateScenario.setText("Buscar taxa e calcular cenário");
+        java.time.Instant published=scenario.reference.publishedAt;
+        String at=DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm",new Locale("pt","BR")).format(published.atZone(BcbClient.ZONE))+" (Brasília)";
+        scenarioStatus.setText(scenario.reference.source+" · referência publicada em "+at+(scenario.reference.warning==null?"":" · "+scenario.reference.warning));
+        EconomicSimulator.Result result=scenario.totals;
+        scenarioResult.setText("Base: R$ "+number(result.base,2)+"\nSpread informado: R$ "+number(result.spread,2)+"\nOutros encargos: R$ "+number(result.extra,2)+"\nTarifa fixa: R$ "+number(result.fixedFee,2)+"\nTotal estimado: R$ "+number(result.total,2)+"\nPercentuais calculados sobre o valor-base, sem capitalização.");
+    }
+    private void showScenarioUnavailable(){
+        scenarioLoading=false;if(isFinishing()||isDestroyed())return;
+        calculateScenario.setEnabled(true);calculateScenario.setText("Buscar taxa e calcular cenário");
+        scenarioStatus.setText("Fonte sem dado válido; confira Diagnóstico e tente novamente.");
+        scenarioResult.setText("Cálculo indisponível sem uma taxa publicada válida.");
+    }
     private void open(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception ex){status.setText("Não foi possível abrir a página da fonte neste aparelho.");}}
     @Override protected void onDestroy(){worker.shutdownNow();main.removeCallbacksAndMessages(null);super.onDestroy();}
 }

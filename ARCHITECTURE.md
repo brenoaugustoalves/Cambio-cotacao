@@ -56,6 +56,8 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 `EconomyPresenter` transforma observações SGS e expectativas Focus em `EconomyDisplay`, sem depender de `Activity`, widgets Android ou fonte de dados. Locale, precisão decimal, horários, unidades, falta de observações e falha parcial têm testes próprios. `EconomyActivity` apenas adapta os modelos carregados e vincula o resultado aos `TextView`.
 
+O simulador de custos foi organizado em `economy/domain`, `economy/application` e adaptador Android. `CalculateEconomicScenario` solicita uma referência publicada pela porta `EconomicQuoteProvider` e aplica `EconomicSimulator`; `AndroidEconomicQuoteProvider` escolhe mercado ou PTAX, usa cache válido como fallback identificado e preserva o horário/origem. Sem uma cotação válida, o caso não calcula nem cria substitutos.
+
 `PtaxRefreshPolicy` define quando cabe consultar novamente a PTAX salva no widget e no resumo, com intervalos explícitos e tratamento de timestamp futuro sem tempestade de chamadas.
 
 `RefreshMarketQuotes` coordena o lote usado pela tela principal e pelo widget: fonte → repositório → observações por moeda → arquivo de histórico e alertas. `StoreMarketBatch` compartilha somente busca e persistência com o simulador, sem acionar alertas. `RefreshStockQuotes` mantém erros independentes para ações e Ibovespa. `RefreshMarketHistory` separa carregamentos intradiários e diários e limita a janela pedida ao provedor; `AndroidMarketHistoryGateway` valida e grava cada série no seu repositório.

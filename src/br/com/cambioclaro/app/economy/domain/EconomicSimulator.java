@@ -1,4 +1,4 @@
-package br.com.cambioclaro.app;
+package br.com.cambioclaro.app.economy.domain;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
