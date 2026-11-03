@@ -58,7 +58,7 @@ O alerta PTAX usa a taxa de venda publicada pelo Banco Central do Brasil. A PTAX
 ## Outras partes do aplicativo
 
 - Moedas cotadas em reais, com cotação comercial e USD turismo separados.
-- Conversor com seleção independente entre todas as moedas suportadas; USD turismo permanece separado, e a tela identifica se usou mercado (ask) ou PTAX venda salva.
+- Conversor com origem selecionável entre as moedas suportadas e destino BRL explícito; USD turismo permanece separado, e a tela identifica se usou mercado (ask) ou PTAX venda salva.
 - Histórico PTAX e gráfico com seleção de período.
 - Variações entre publicações com preço, horário, valor absoluto e percentual.
 - Widget de tela inicial para acompanhar uma moeda.

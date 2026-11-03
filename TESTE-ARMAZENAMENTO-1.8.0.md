@@ -23,7 +23,7 @@ python verify.py --emulator emulator-5556
 
 - `python verify.py`: passou; APK compilado e assinado, 29 testes de domínio passaram.
 - `python verify.py --emulator emulator-5556`: passou; 308 verificações instrumentadas Android passaram em API 34.
-- Carga local dos parsers: 250 respostas de mercado, 25 PTAX e 25 SGS em 2.039 ms.
+- Carga local dos parsers: 250 respostas de mercado, 25 PTAX e 25 SGS em 1.881 ms.
 - Verificação de assinatura APK v2/v3 e alinhamento: passou.
 - O emulador foi usado como ambiente descartável; nenhum aparelho físico foi instalado nem atualizado por este teste.
 

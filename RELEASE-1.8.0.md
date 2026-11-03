@@ -5,12 +5,12 @@
 - Variações de mercado são exibidas para cada moeda quando existem duas publicações reais para comparar. Sem base, a UI informa indisponibilidade.
 - Menu da tela inicial separa Moedas, Bolsa, Economia e Fontes para reduzir rolagem e agrupar assuntos.
 - A área Moedas tem submenus Cotação, Gráfico, PTAX, Converter e Outras; cada assunto abre sozinho para encurtar a página.
-- O conversor permite selecionar independentemente as moedas suportadas e distingue USD comercial, USD turismo, cotação de mercado e fallback PTAX salvo.
+- O conversor permite selecionar a origem entre as moedas suportadas e identifica BRL como destino. Distingue USD comercial, USD turismo, cotação de mercado e fallback PTAX salvo.
 - A navegação principal passou para uma barra inferior fixa; controles têm alvos de toque ampliados, e a cotação sinaliza estado recente, atrasado ou indisponível com texto e cor.
 - No gráfico, a faixa de seleção reúne horário, direção, variação absoluta e percentual, e cotação do ponto observado.
 - Checagem de Releases GitHub a cada aproximadamente 12 horas via JobScheduler, com aviso local, comparação de versão, limite de tamanho, SHA-256 quando fornecido pelo GitHub, conferência do pacote/certificado e instalação com confirmação do Android.
 - Workflow de tag cria Releases assinadas; a chave é lida apenas dos segredos privados do GitHub Actions e nunca do repositório.
-- Validação desta etapa: `python verify.py` passou (29 testes de domínio); `python verify.py --emulator emulator-5556` passou (308 verificações Android na API 34; carga local de parsers em 2.039 ms).
+- Validação desta etapa: `python verify.py` passou (29 testes de domínio); `python verify.py --emulator emulator-5556` passou (308 verificações Android na API 34; carga local de parsers em 1.881 ms).
 - Substitui o JSON único em `SharedPreferences` por SQLite (`MarketArchiveDb`) com tabela por observação e chave primária `(moeda, horário em ms)`.
 - Gravação transacional, consultas por moeda e intervalo com índice e deduplicação pelo timestamp do fornecedor.
 - Retenção de até 5.000 observações por moeda e 365 dias; pontos fora da janela e timestamps futuros são descartados.
