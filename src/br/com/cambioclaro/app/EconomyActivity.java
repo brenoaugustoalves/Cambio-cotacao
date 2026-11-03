@@ -20,15 +20,13 @@ import br.com.cambioclaro.app.economy.presentation.NewsDisplay;
 import br.com.cambioclaro.app.economy.presentation.NewsPresenter;
 import br.com.cambioclaro.app.economy.presentation.HistoryDisplay;
 import br.com.cambioclaro.app.economy.presentation.EconomyHistoryPresenter;
+import br.com.cambioclaro.app.economy.presentation.EconomicScenarioPresenter;
+import br.com.cambioclaro.app.economy.presentation.EconomicScenarioDisplay;
 import br.com.cambioclaro.app.economy.application.CalculateEconomicScenario;
 import br.com.cambioclaro.app.economy.application.EconomicScenario;
 import br.com.cambioclaro.app.economy.domain.EconomicSimulator;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.List;
@@ -36,7 +34,7 @@ import java.util.List;
 /** Macro overview. Observed data and Focus market expectations are deliberately separate. */
 public final class EconomyActivity extends Activity {
     private final ExecutorService worker=Executors.newFixedThreadPool(3);private final Handler main=new Handler(Looper.getMainLooper());
-    private AndroidEconomySources economySources;private final RefreshSources refreshSources=new RefreshSources();private final EconomyPresenter economyPresenter=new EconomyPresenter();private final NewsPresenter newsPresenter=new NewsPresenter();private final EconomyHistoryPresenter historyPresenter=new EconomyHistoryPresenter();private CalculateEconomicScenario scenarioUseCase;
+    private AndroidEconomySources economySources;private final RefreshSources refreshSources=new RefreshSources();private final EconomyPresenter economyPresenter=new EconomyPresenter();private final NewsPresenter newsPresenter=new NewsPresenter();private final EconomyHistoryPresenter historyPresenter=new EconomyHistoryPresenter();private final EconomicScenarioPresenter scenarioPresenter=new EconomicScenarioPresenter();private CalculateEconomicScenario scenarioUseCase;
     private UiStyle style;private LinearLayout body,newsItems,globalNewsItems,historyItems;private TextView status,selic,ipca,focusIpca,focusSelic,focusFx,focusPib,scenarioStatus,scenarioResult,newsStatus,globalNewsStatus,historyStatus;private Button refresh,calculateScenario;private Spinner scenarioCurrency,scenarioSource;private EditText scenarioAmount,scenarioSpread,scenarioExtra,scenarioFixed;private boolean loading,scenarioLoading,newsLoading,globalNewsLoading,historyLoading;
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private TextView text(String value,int size,boolean bold){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTypeface(android.graphics.Typeface.create("sans-serif",bold?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL));style.text(t);return t;}
@@ -100,8 +98,6 @@ public final class EconomyActivity extends Activity {
     }
     private void load(boolean force){if(loading)return;if(!force&&EconomyClient.cacheFresh(this,System.currentTimeMillis())){status.setText("Consulta recente · os indicadores seguem a frequência de cada fonte.");return;}loading=true;refresh.setEnabled(false);refresh.setText("Consultando fontes oficiais…");status.setText("Consultando SGS e Focus por HTTPS…");worker.execute(()->{LocalDate today=BcbClient.today();RefreshSources.Result refreshed=refreshSources.execute(economySources.overview(today));long attempted=System.currentTimeMillis();EconomyClient.markAttempt(getApplicationContext(),attempted);EconomyClient.Snapshot result=EconomyClient.cached(getApplicationContext(),today);String failure=sourceErrors(refreshed," indisponível");for(RefreshSources.Failure item:refreshed.failures)Diagnostics.record(getApplicationContext(),"painel econômico / "+item.sourceId,item.cause);final EconomyClient.Snapshot display=result;final String errors=failure;main.post(()->{loading=false;if(isFinishing()||isDestroyed())return;refresh.setEnabled(true);refresh.setText("Atualizar indicadores");render(display,errors);});});}
     private String sourceErrors(RefreshSources.Result result,String suffix){if(!result.hasFailures())return null;StringBuilder message=new StringBuilder();for(RefreshSources.Failure failure:result.failures){if(message.length()>0)message.append("; ");message.append(failure.sourceId).append(suffix);}return message.toString();}
-    private String number(java.math.BigDecimal value,int digits){NumberFormat f=NumberFormat.getNumberInstance(new Locale("pt","BR"));f.setMinimumFractionDigits(digits);f.setMaximumFractionDigits(digits);return f.format(value.setScale(digits,RoundingMode.HALF_UP));}
-    private String date(LocalDate value){return value.format(DateTimeFormatter.ofPattern("dd/MM/uuuu",new Locale("pt","BR")));}
     private void render(EconomyClient.Snapshot data,String failure){EconomyPresenter.Metric selicMetric=data==null||data.selic==null?null:new EconomyPresenter.Metric(data.selic.value,data.selic.date);EconomyPresenter.Metric ipcaMetric=data==null||data.ipca==null?null:new EconomyPresenter.Metric(data.ipca.value,data.ipca.date);java.util.Map<String,EconomyPresenter.Expectation> expected=new java.util.LinkedHashMap<>();if(data!=null)for(java.util.Map.Entry<String,EconomyClient.Point> entry:data.expectations.entrySet()){EconomyClient.Point p=entry.getValue();expected.put(entry.getKey(),new EconomyPresenter.Expectation(p.value,p.unit,p.period,p.date,p.respondents));}EconomyDisplay display=economyPresenter.present(selicMetric,ipcaMetric,expected,data==null?0:data.fetchedAt,System.currentTimeMillis(),failure,BcbClient.ZONE);selic.setText(display.selic);ipca.setText(display.ipca);focusIpca.setText(display.focusIpca);focusSelic.setText(display.focusSelic);focusFx.setText(display.focusFx);focusPib.setText(display.focusPib);status.setText(display.status);}
     private void calculateScenario(){
         if(scenarioLoading)return;
@@ -128,17 +124,12 @@ public final class EconomyActivity extends Activity {
     private void showScenario(EconomicScenario scenario){
         scenarioLoading=false;if(isFinishing()||isDestroyed())return;
         calculateScenario.setEnabled(true);calculateScenario.setText("Buscar taxa e calcular cenário");
-        java.time.Instant published=scenario.reference.publishedAt;
-        String at=DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm",new Locale("pt","BR")).format(published.atZone(BcbClient.ZONE))+" (Brasília)";
-        scenarioStatus.setText(scenario.reference.source+" · referência publicada em "+at+(scenario.reference.warning==null?"":" · "+scenario.reference.warning));
-        EconomicSimulator.Result result=scenario.totals;
-        scenarioResult.setText("Base: R$ "+number(result.base,2)+"\nSpread informado: R$ "+number(result.spread,2)+"\nOutros encargos: R$ "+number(result.extra,2)+"\nTarifa fixa: R$ "+number(result.fixedFee,2)+"\nTotal estimado: R$ "+number(result.total,2)+"\nPercentuais calculados sobre o valor-base, sem capitalização.");
+        EconomicScenarioDisplay display=scenarioPresenter.present(scenario,BcbClient.ZONE);scenarioStatus.setText(display.status);scenarioResult.setText(display.details);
     }
     private void showScenarioUnavailable(){
         scenarioLoading=false;if(isFinishing()||isDestroyed())return;
         calculateScenario.setEnabled(true);calculateScenario.setText("Buscar taxa e calcular cenário");
-        scenarioStatus.setText("Fonte sem dado válido; confira Diagnóstico e tente novamente.");
-        scenarioResult.setText("Cálculo indisponível sem uma taxa publicada válida.");
+        EconomicScenarioDisplay display=scenarioPresenter.unavailable();scenarioStatus.setText(display.status);scenarioResult.setText(display.details);
     }
     private void open(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception ex){status.setText("Não foi possível abrir a página da fonte neste aparelho.");}}
     @Override protected void onDestroy(){worker.shutdownNow();main.removeCallbacksAndMessages(null);super.onDestroy();}

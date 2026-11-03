@@ -62,6 +62,8 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 O simulador de custos foi organizado em `economy/domain`, `economy/application` e adaptador Android. `CalculateEconomicScenario` solicita uma referência publicada pela porta `EconomicQuoteProvider` e aplica `EconomicSimulator`; `AndroidEconomicQuoteProvider` escolhe mercado ou PTAX, usa cache válido como fallback identificado e preserva o horário/origem. Sem uma cotação válida, o caso não calcula nem cria substitutos.
 
+`EconomicScenarioPresenter` formata o resultado financeiro, suas parcelas, a referência escolhida e o aviso de atualidade para a tela. A Activity não recompõe valores nem decide qual metadata mostrar.
+
 `PtaxRefreshPolicy` define quando cabe consultar novamente a PTAX salva no widget e no resumo, com intervalos explícitos e tratamento de timestamp futuro sem tempestade de chamadas.
 
 `RefreshMarketQuotes` coordena o lote usado pela tela principal e pelo widget: fonte → repositório → observações por moeda → arquivo de histórico e alertas. `StoreMarketBatch` compartilha somente busca e persistência com o simulador, sem acionar alertas. `RefreshStockQuotes` mantém erros independentes para ações e Ibovespa. `RefreshMarketHistory` separa carregamentos intradiários e diários e limita a janela pedida ao provedor; `AndroidMarketHistoryGateway` valida e grava cada série no seu repositório.
