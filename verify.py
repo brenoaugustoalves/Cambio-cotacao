@@ -38,10 +38,17 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketHistorySource.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketHistoryRepository.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/RefreshMarketHistory.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/PtaxQuoteSource.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/PtaxRateRepository.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/PtaxAlertSink.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/StoredPtaxRates.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/StorePtaxRates.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/RefreshPtaxRates.java',
+     ROOT/'src/br/com/cambioclaro/app/market/domain/PtaxBatch.java',
      ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
-     ROOT/'tests/RefreshMarketHistoryTest.java'])
+     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
@@ -58,6 +65,8 @@ stock_refresh_results=run([jdk_tool('java'),'-cp',classes,'RefreshStockQuotesTes
 (ROOT/'build/stock-refresh-results.txt').write_text(stock_refresh_results,encoding='utf8')
 history_refresh_results=run([jdk_tool('java'),'-cp',classes,'RefreshMarketHistoryTest'])
 (ROOT/'build/history-refresh-results.txt').write_text(history_refresh_results,encoding='utf8')
+ptax_refresh_results=run([jdk_tool('java'),'-cp',classes,'RefreshPtaxRatesTest'])
+(ROOT/'build/ptax-refresh-results.txt').write_text(ptax_refresh_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')
