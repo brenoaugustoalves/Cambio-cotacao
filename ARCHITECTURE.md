@@ -52,6 +52,8 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 `RefreshSources` coordena lotes de fontes independentes, retendo quais fontes concluíram e cada falha sem abortar as seguintes. `AndroidEconomySources` é o adaptador para SGS observado, Focus, histórico SGS, comunicados do BCB e feeds oficiais Fed/BCE. `EconomyActivity` consome os resultados, atualiza a apresentação e registra falhas no Diagnóstico; parsers continuam nos clientes de cada fonte.
 
+`EconomyFreshnessPolicy` centraliza a regra pura de validade do cache (timestamp ausente, vencido, futuro após recuo do relógio e limite da janela). Os clientes Android de SGS/Focus, histórico e notícias leem seus horários locais e delegam a decisão a essa política, com TTLs próprios por tipo de conteúdo.
+
 `RefreshMarketQuotes` coordena o lote usado pela tela principal e pelo widget: fonte → repositório → observações por moeda → arquivo de histórico e alertas. `StoreMarketBatch` compartilha somente busca e persistência com o simulador, sem acionar alertas. `RefreshStockQuotes` mantém erros independentes para ações e Ibovespa. `RefreshMarketHistory` separa carregamentos intradiários e diários e limita a janela pedida ao provedor; `AndroidMarketHistoryGateway` valida e grava cada série no seu repositório.
 
 ### Apresentação
@@ -69,7 +71,7 @@ A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia
 
 ## Refatoração incremental restante
 
-`MainActivity` ainda constrói várias telas e conserva a coordenação visual dos carregamentos e callbacks. `WidgetUpdateService` coordena o ciclo do JobScheduler. A tela econômica agora delega os lotes de download/persistência para `RefreshSources` e `AndroidEconomySources`, embora ainda mantenha estado de carregamento, callbacks de UI e regras de validade de cache. Os fluxos de conversão, PTAX, mercado, ações, turismo, históricos e lotes de fontes econômicas foram separados e testados, mas a aplicação inteira ainda não está migrada para Clean Architecture. Próximos passos são extrair a política de cache por fonte, modelar resultados de apresentação e separar componentes sem mudar os contratos públicos.
+`MainActivity` ainda constrói várias telas e conserva a coordenação visual dos carregamentos e callbacks. `WidgetUpdateService` coordena o ciclo do JobScheduler. A tela econômica delega os lotes para `RefreshSources` e `AndroidEconomySources`; os clientes aplicam `EconomyFreshnessPolicy`, embora estado de carregamento e callbacks continuem na UI. Os fluxos de conversão, PTAX, mercado, ações, turismo, históricos e fontes econômicas foram separados e testados, mas a aplicação inteira ainda não está migrada para Clean Architecture. Próximos passos são modelar resultados de apresentação e separar componentes sem mudar os contratos públicos.
 
 ## Distribuição externa
 

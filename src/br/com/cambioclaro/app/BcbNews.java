@@ -19,13 +19,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import javax.net.ssl.HttpsURLConnection;
+import br.com.cambioclaro.app.market.application.EconomyFreshnessPolicy;
 
 /** Small, bounded reader for the BCB's official Atom press-release feed. */
 public final class BcbNews {
     public static final String FEED_BASE="https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/notasImprensa?ano=";
     private static final int MAX_BYTES=512*1024;
     private static final int MAX_ITEMS=100;
-    private static final long CACHE_TTL=3L*60*60*1000;
     private BcbNews(){}
 
     public static final class Item {
@@ -68,7 +68,7 @@ public final class BcbNews {
     public static void save(Context context,String xml,long at){SharedPreferences p=context.getSharedPreferences("economy_news_v1",Context.MODE_PRIVATE);p.edit().putString("atom",xml).putLong("fetched",at).apply();}
     public static List<Item> cached(Context context,Instant now){String xml=context.getSharedPreferences("economy_news_v1",Context.MODE_PRIVATE).getString("atom",null);if(xml==null)return Collections.emptyList();try{return parse(xml,now);}catch(Exception ex){return Collections.emptyList();}}
     public static long cachedAt(Context context){return context.getSharedPreferences("economy_news_v1",Context.MODE_PRIVATE).getLong("fetched",0);}
-    public static boolean fresh(Context context,long now){SharedPreferences p=context.getSharedPreferences("economy_news_v1",Context.MODE_PRIVATE);long at=p.getLong("fetched",0);return at>0&&at<=now&&now-at<CACHE_TTL;}
+    public static boolean fresh(Context context,long now){SharedPreferences p=context.getSharedPreferences("economy_news_v1",Context.MODE_PRIVATE);long at=p.getLong("fetched",0);return EconomyFreshnessPolicy.isFresh(at,now,EconomyFreshnessPolicy.OFFICIAL_NEWS_TTL_MS);}
 }
 
 

@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import javax.net.ssl.HttpsURLConnection;
+import br.com.cambioclaro.app.market.application.EconomyFreshnessPolicy;
 
 /** Official BCB macro series and Focus market expectations, with bounded HTTPS and validation. */
 public final class EconomyClient {
@@ -27,7 +28,6 @@ public final class EconomyClient {
     public static final String FOCUS_PAGE="https://www.bcb.gov.br/publicacoes/focus";
     private static final String FOCUS_BASE="https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoAnuais";
     private static final int MAX_BYTES=262144;
-    private static final long CACHE_TTL=6L*60*60*1000;
     private static final DateTimeFormatter SGS_DATE=DateTimeFormatter.ofPattern("dd/MM/uuuu",Locale.ROOT);
     private EconomyClient(){}
 
@@ -86,7 +86,7 @@ public final class EconomyClient {
     public static void saveFocus(Context context,String raw){SharedPreferences p=context.getSharedPreferences("economy_v1",Context.MODE_PRIVATE);p.edit().putString("focus",raw).putLong("focus_fetched",System.currentTimeMillis()).apply();}
     public static void markAttempt(Context context,long at){context.getSharedPreferences("economy_v1",Context.MODE_PRIVATE).edit().putLong("last_attempt",at).apply();}
     public static Snapshot cached(Context context,LocalDate today){SharedPreferences p=context.getSharedPreferences("economy_v1",Context.MODE_PRIVATE);Point selic=null,ipca=null;Map<String,Point> focus=Collections.emptyMap();try{String raw=p.getString("selic",null);if(raw!=null)selic=parseSgs(raw,432,today);}catch(Exception ignored){}try{String raw=p.getString("ipca",null);if(raw!=null)ipca=parseSgs(raw,433,today);}catch(Exception ignored){}try{String raw=p.getString("focus",null);if(raw!=null)focus=parseFocus(raw,today,today.getYear());}catch(Exception ignored){}long fetched=Math.max(p.getLong("selic_fetched",0),Math.max(p.getLong("ipca_fetched",0),p.getLong("focus_fetched",0)));if(selic==null&&ipca==null&&focus.isEmpty())return null;if(fetched<=0||fetched>System.currentTimeMillis())return null;return new Snapshot(selic,ipca,focus,fetched);}
-    public static boolean cacheFresh(Context context,long now){long attempted=context.getSharedPreferences("economy_v1",Context.MODE_PRIVATE).getLong("last_attempt",0);return attempted>0&&attempted<=now&&now-attempted<CACHE_TTL;}
+    public static boolean cacheFresh(Context context,long now){long attempted=context.getSharedPreferences("economy_v1",Context.MODE_PRIVATE).getLong("last_attempt",0);return EconomyFreshnessPolicy.isFresh(attempted,now,EconomyFreshnessPolicy.INDICATORS_TTL_MS);}
 }
 
 

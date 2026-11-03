@@ -48,11 +48,12 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'src/br/com/cambioclaro/app/market/application/TourismRefreshResult.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/RefreshTourismQuotes.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/RefreshSources.java',
+     ROOT/'src/br/com/cambioclaro/app/market/application/EconomyFreshnessPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/domain/PtaxBatch.java',
      ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
-     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java'])
+     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
@@ -75,6 +76,8 @@ tourism_refresh_results=run([jdk_tool('java'),'-cp',classes,'RefreshTourismQuote
 (ROOT/'build/tourism-refresh-results.txt').write_text(tourism_refresh_results,encoding='utf8')
 source_refresh_results=run([jdk_tool('java'),'-cp',classes,'RefreshSourcesTest'])
 (ROOT/'build/source-refresh-results.txt').write_text(source_refresh_results,encoding='utf8')
+economy_freshness_results=run([jdk_tool('java'),'-cp',classes,'EconomyFreshnessPolicyTest'])
+(ROOT/'build/economy-freshness-results.txt').write_text(economy_freshness_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')

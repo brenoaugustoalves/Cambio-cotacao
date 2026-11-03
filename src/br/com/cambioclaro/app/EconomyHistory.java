@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import javax.net.ssl.HttpsURLConnection;
+import br.com.cambioclaro.app.market.application.EconomyFreshnessPolicy;
 
 /** Actual BCB observations, aligned by month without interpolating missing data. */
 public final class EconomyHistory {
@@ -55,6 +56,6 @@ public final class EconomyHistory {
     public static List<Month> cached(Context c,LocalDate today){SharedPreferences p=c.getSharedPreferences("economy_history_v1",Context.MODE_PRIVATE);List<Observation> selic=read(p.getString("selic",null),SELIC_SERIES,today),ipca=read(p.getString("ipca",null),IPCA_SERIES,today);return align(ipca,selic);}
     private static List<Observation> read(String raw,int series,LocalDate today){try{return parse(raw,series,today);}catch(Exception ex){return Collections.emptyList();}}
     public static long cachedAt(Context c){SharedPreferences p=c.getSharedPreferences("economy_history_v1",Context.MODE_PRIVATE);return Math.max(p.getLong("selic_at",0),p.getLong("ipca_at",0));}
-    public static boolean fresh(Context c,long now){long at=c.getSharedPreferences("economy_history_v1",Context.MODE_PRIVATE).getLong("last_attempt",0);return at>0&&at<=now&&now-at<6L*60*60*1000;}
+    public static boolean fresh(Context c,long now){long at=c.getSharedPreferences("economy_history_v1",Context.MODE_PRIVATE).getLong("last_attempt",0);return EconomyFreshnessPolicy.isFresh(at,now,EconomyFreshnessPolicy.INDICATORS_TTL_MS);}
     public static void markAttempt(Context c,long at){c.getSharedPreferences("economy_history_v1",Context.MODE_PRIVATE).edit().putLong("last_attempt",at).apply();}
 }

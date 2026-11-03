@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import javax.net.ssl.HttpsURLConnection;
+import br.com.cambioclaro.app.market.application.EconomyFreshnessPolicy;
 
 /** Official international macroeconomic releases; titles are shown without generated analysis. */
 public final class GlobalNews {
@@ -38,8 +39,8 @@ public final class GlobalNews {
     public static void save(Context context,String id,String xml,long at){source(id);context.getSharedPreferences("global_market_news_v1",Context.MODE_PRIVATE).edit().putString(id,xml).putLong(id+"_fetched",at).apply();}
     public static List<Item> cached(Context context,String id,java.time.Instant now){try{return parse(id,context.getSharedPreferences("global_market_news_v1",Context.MODE_PRIVATE).getString(id,null),now);}catch(Exception ex){return Collections.emptyList();}}
     public static long cachedAt(Context context,String id){source(id);return context.getSharedPreferences("global_market_news_v1",Context.MODE_PRIVATE).getLong(id+"_fetched",0);}
-    public static boolean freshSource(Context context,String id,long now){long at=cachedAt(context,id);return at>0&&at<=now&&now-at<3L*60*60*1000;}
-    public static boolean fresh(Context context,long now){SharedPreferences p=context.getSharedPreferences("global_market_news_v1",Context.MODE_PRIVATE);long fed=p.getLong("fed_fetched",0),ecb=p.getLong("ecb_fetched",0);return fed>0&&ecb>0&&fed<=now&&ecb<=now&&now-fed<3L*60*60*1000&&now-ecb<3L*60*60*1000;}
+    public static boolean freshSource(Context context,String id,long now){return EconomyFreshnessPolicy.isFresh(cachedAt(context,id),now,EconomyFreshnessPolicy.INTERNATIONAL_NEWS_TTL_MS);}
+    public static boolean fresh(Context context,long now){SharedPreferences p=context.getSharedPreferences("global_market_news_v1",Context.MODE_PRIVATE);long fed=p.getLong("fed_fetched",0),ecb=p.getLong("ecb_fetched",0);return EconomyFreshnessPolicy.isFresh(fed,now,EconomyFreshnessPolicy.INTERNATIONAL_NEWS_TTL_MS)&&EconomyFreshnessPolicy.isFresh(ecb,now,EconomyFreshnessPolicy.INTERNATIONAL_NEWS_TTL_MS);}
 }
 
 
