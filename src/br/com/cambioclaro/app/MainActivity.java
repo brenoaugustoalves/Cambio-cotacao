@@ -14,9 +14,10 @@ import android.view.*;
 import android.widget.*;
 import br.com.cambioclaro.app.conversion.application.ConvertCurrency;
 import br.com.cambioclaro.app.conversion.data.AndroidConversionQuoteSource;
-import br.com.cambioclaro.app.conversion.domain.ConversionQuote;
 import br.com.cambioclaro.app.conversion.domain.ConversionRequest;
 import br.com.cambioclaro.app.conversion.domain.ConversionResult;
+import br.com.cambioclaro.app.conversion.presentation.ConversionDisplay;
+import br.com.cambioclaro.app.conversion.presentation.ConversionPresenter;
 import br.com.cambioclaro.app.market.application.MarketRefreshPolicy;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -518,26 +519,9 @@ public final class MainActivity extends Activity {
         if(resultText==null)return;
         converterTitle.setText("Converter "+(converterTourismMode?"USD turismo":converterCurrency.name())+" → BRL");amountLabel.setText("Valor em "+converterCurrency.name()+" ("+converterCurrency.label+")");amount.setContentDescription("Valor em "+converterCurrency.name()+". Use vírgula ou ponto decimal, sem separador de milhar.");
         ConversionResult result=conversionUseCase.execute(new ConversionRequest(converterCurrency.name(),amount.getText().toString(),converterTourismMode));
-        if(result.status!=ConversionResult.Status.SUCCESS){resultText.setText("—");convertNote.setText(conversionMessage(result.status));return;}
-        resultText.setText(money(result.amountInReais,2));
-        ConversionQuote quote=result.quote;
-        String published=quote.publishedAt.atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM HH:mm",br));
-        if(quote.source==ConversionQuote.Source.PTAX){
-            convertNote.setText("Referência: PTAX venda de "+quote.publishedAt.atZone(BcbClient.ZONE).format(dayFormat)+".\nMercado indisponível; usando a última PTAX salva. Sem tarifas ou IOF adicionais.");
-        }else{
-            String source=quote.source==ConversionQuote.Source.TOURISM?"dólar turismo (ask)":"mercado (ask)";
-            convertNote.setText("Referência: "+source+" publicada em "+published+".\nSem tarifas ou IOF adicionais.");
-        }
-    }
-    private String conversionMessage(ConversionResult.Status status){
-        switch(status){
-            case AMOUNT_REQUIRED:return "Digite um valor em "+converterCurrency.name()+".";
-            case INVALID_AMOUNT:return "Digite um valor válido, com até 2 casas decimais e sem separador de milhar.";
-            case INVALID_CURRENCY:return "Moeda não reconhecida para conversão.";
-            case INVALID_MODE:return "Dólar turismo está disponível somente para USD.";
-            case RATE_UNAVAILABLE:return converterTourismMode?"Dólar turismo indisponível. Não usamos a cotação comercial como substituto.":"Sem cotação válida de "+converterCurrency.name()+". Atualize para consultar a fonte.";
-            default:return "Não foi possível calcular a conversão.";
-        }
+        ConversionDisplay display=ConversionPresenter.present(result,converterCurrency.name(),converterTourismMode,BcbClient.ZONE);
+        resultText.setText(display.isAvailable()?money(display.amountInReais,2):"—");
+        convertNote.setText(display.note);
     }
     private void showTable(){
         if(visible.isEmpty()){new AlertDialog.Builder(this).setTitle("Sem dados").setMessage("Não há publicações válidas para o período selecionado.").setPositiveButton("OK",null).show();return;}

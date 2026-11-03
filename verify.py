@@ -23,13 +23,17 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      conversion/'domain/ConversionQuote.java',conversion/'domain/ConversionRequest.java',
      conversion/'domain/ConversionResult.java',conversion/'application/ConversionQuoteSource.java',
      conversion/'application/ConvertCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/application/MarketRefreshPolicy.java',
-     ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/MarketRefreshPolicyTest.java'])
+     conversion/'presentation/ConversionDisplay.java',conversion/'presentation/ConversionPresenter.java',
+     ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
+     ROOT/'tests/MarketRefreshPolicyTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
 (ROOT/'build/conversion-results.txt').write_text(conversion_results,encoding='utf8')
 refresh_policy_results=run([jdk_tool('java'),'-cp',classes,'MarketRefreshPolicyTest'])
 (ROOT/'build/refresh-policy-results.txt').write_text(refresh_policy_results,encoding='utf8')
+presenter_results=run([jdk_tool('java'),'-cp',classes,'ConversionPresenterTest'])
+(ROOT/'build/conversion-presenter-results.txt').write_text(presenter_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')

@@ -36,6 +36,8 @@ MainActivity ──> ConvertCurrency ──> ConversionQuoteSource (porta)
 
 `ConvertCurrency` recebe uma intenção (`ConversionRequest`), aplica as regras de modo/moeda e calcula usando a regra de domínio `Rate.convert`. A porta permite testar essa política sem Android, rede ou armazenamento real; o adaptador Android lê somente observações persistidas. `ConversionResult` comunica estados explícitos à apresentação, que formata valor, origem e horário.
 
+`ConversionPresenter` traduz os estados em texto e metadados de exibição usando o fuso informado pelo chamador; `ConversionDisplay` é o modelo imutável para bind. Ambos são Java puro, então idioma, indicação de fonte e mensagens de indisponibilidade podem ser testados sem instanciar views.
+
 Para conversão comercial, uma cotação de mercado ausente permite usar a última PTAX salva, com essa origem indicada ao usuário. Para turismo, a falta de uma cotação própria resulta em indisponibilidade; não há substituição por comercial/PTAX. A conversão não consulta rede durante digitação e não estima taxas nem tarifas.
 
 ### Política de atualização
@@ -57,7 +59,7 @@ A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia
 
 ## Refatoração incremental restante
 
-O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Foram extraídas a política da conversão e a política pura de intervalos de atualização; os serviços Android continuam adaptadores de ambiente. Próximas iterações devem extrair a apresentação da conversão e a coordenação de consultas de mercado, mantendo testes instrumentados de navegação, cache e origem dos dados por etapa. Não se considera toda a aplicação migrada para Clean Architecture.
+O próximo limite de maior valor é reduzir `MainActivity`, que ainda constrói muitas telas e coordena consultas de moedas, ações, derivativos e PTAX. Foram extraídos o caso de uso, o adaptador e a apresentação do conversor, além da política pura de intervalos de atualização; os serviços Android continuam adaptadores de ambiente. Próxima iteração: coordenar consultas de mercado com dependências explícitas e testes de cancelamento/concorrência. Não se considera toda a aplicação migrada para Clean Architecture.
 
 ## Distribuição externa
 
