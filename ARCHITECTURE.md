@@ -54,6 +54,8 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 `EconomyFreshnessPolicy` centraliza a regra pura de validade do cache (timestamp ausente, vencido, futuro após recuo do relógio e limite da janela). Os clientes Android de SGS/Focus, histórico e notícias leem seus horários locais e delegam a decisão a essa política, com TTLs próprios por tipo de conteúdo.
 
+`PtaxRefreshPolicy` define quando cabe consultar novamente a PTAX salva no widget e no resumo, com intervalos explícitos e tratamento de timestamp futuro sem tempestade de chamadas.
+
 `RefreshMarketQuotes` coordena o lote usado pela tela principal e pelo widget: fonte → repositório → observações por moeda → arquivo de histórico e alertas. `StoreMarketBatch` compartilha somente busca e persistência com o simulador, sem acionar alertas. `RefreshStockQuotes` mantém erros independentes para ações e Ibovespa. `RefreshMarketHistory` separa carregamentos intradiários e diários e limita a janela pedida ao provedor; `AndroidMarketHistoryGateway` valida e grava cada série no seu repositório.
 
 ### Apresentação
@@ -71,7 +73,7 @@ A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia
 
 ## Refatoração incremental restante
 
-`MainActivity` ainda constrói várias telas e conserva a coordenação visual dos carregamentos e callbacks. `WidgetUpdateService` coordena o ciclo do JobScheduler. A tela econômica delega os lotes para `RefreshSources` e `AndroidEconomySources`; os clientes aplicam `EconomyFreshnessPolicy`, embora estado de carregamento e callbacks continuem na UI. Os fluxos de conversão, PTAX, mercado, ações, turismo, históricos e fontes econômicas foram separados e testados, mas a aplicação inteira ainda não está migrada para Clean Architecture. Próximos passos são modelar resultados de apresentação e separar componentes sem mudar os contratos públicos.
+As telas Android ainda constroem views e mantêm estado visual/callbacks, que pertencem à camada de apresentação. O agendamento dos jobs permanece nos serviços Android, enquanto frequência e atualizações de dados passam por políticas e casos de uso testados sem Android. Os fluxos de conversão, PTAX, mercado, ações, turismo, históricos, cache econômico e feeds oficiais foram separados e testados. A composição de views ainda não foi migrada para ViewModel ou outra camada de apresentação; o app nativo não inclui essa dependência e a interface atual continua nas Activities.
 
 ## Distribuição externa
 

@@ -2,6 +2,7 @@ package br.com.cambioclaro.app;
 import android.app.job.*;
 import android.os.*;
 import br.com.cambioclaro.app.market.application.MarketRefreshPolicy;
+import br.com.cambioclaro.app.market.application.PtaxRefreshPolicy;
 import java.util.concurrent.*;
 public final class WidgetUpdateService extends JobService {
     private ExecutorService executor;
@@ -24,7 +25,7 @@ public final class WidgetUpdateService extends JobService {
             br.com.cambioclaro.app.market.application.StorePtaxRates ptaxStore=AndroidPtaxGateway.createStore(getApplicationContext());
             for(FxCurrency currency:targets){
                 if(Thread.currentThread().isInterrupted())return;
-                try{long fetched=RateStore.prefs(this,currency).getLong("fetched",0);if(fetched==0||System.currentTimeMillis()-fetched>=6*60*60*1000L){ptaxStore.execute(currency,BcbClient.today());if(Thread.currentThread().isInterrupted())return;}Alerts.evaluate(this,currency,RateStore.read(this,currency));}
+                try{long fetched=RateStore.prefs(this,currency).getLong("fetched",0);if(PtaxRefreshPolicy.shouldRefresh(System.currentTimeMillis(),fetched,6*60*60*1000L)){ptaxStore.execute(currency,BcbClient.today());if(Thread.currentThread().isInterrupted())return;}Alerts.evaluate(this,currency,RateStore.read(this,currency));}
                 catch(Exception ex){Diagnostics.record(getApplicationContext(),"atualização de widget / PTAX "+currency.name(),ex);error="Uma consulta falhou • confira as datas; toque em ↻";}
             }
             final String message=error;

@@ -29,6 +29,7 @@ import br.com.cambioclaro.app.market.application.StorePtaxRates;
 import br.com.cambioclaro.app.market.application.StoredPtaxRates;
 import br.com.cambioclaro.app.market.application.RefreshTourismQuotes;
 import br.com.cambioclaro.app.market.application.TourismRefreshResult;
+import br.com.cambioclaro.app.market.application.PtaxRefreshPolicy;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -507,7 +508,7 @@ public final class MainActivity extends Activity {
                 for(FxCurrency item:FxCurrency.values()){
                     if(!foreground||Thread.currentThread().isInterrupted())break;
                     if(item==selectedAtStart)continue;
-                    long cached=RateStore.prefs(this,item).getLong("fetched",0);if(cached>0&&System.currentTimeMillis()-cached<24*60*60*1000L)continue;
+                    long cached=RateStore.prefs(this,item).getLong("fetched",0);if(!PtaxRefreshPolicy.shouldRefresh(System.currentTimeMillis(),cached,24*60*60*1000L))continue;
                     try{ptaxStore.execute(item,BcbClient.today());if(Thread.currentThread().isInterrupted())break;Alerts.evaluate(this,item,RateStore.read(this,item));runOnUiThread(()->{if(!isDestroyed()){overviewErrors.remove(item);updateOverview();CambioWidget.renderAll(this,null);}});}
                     catch(Exception ex){Diagnostics.record(getApplicationContext(),"resumo de PTAX "+item.name(),ex);runOnUiThread(()->{if(!isDestroyed()){overviewErrors.put(item,"Falha");updateOverview();}});}
                 }
