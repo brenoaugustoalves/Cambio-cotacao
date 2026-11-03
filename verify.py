@@ -21,6 +21,7 @@ conversion=ROOT/'src/br/com/cambioclaro/app/conversion'
 economy_presentation=ROOT/'src/br/com/cambioclaro/app/economy/presentation'
 economy_domain=ROOT/'src/br/com/cambioclaro/app/economy/domain'
 economy_application=ROOT/'src/br/com/cambioclaro/app/economy/application'
+market_presentation=ROOT/'src/br/com/cambioclaro/app/market/presentation'
 run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'src/br/com/cambioclaro/app/Rate.java',economy_domain/'EconomicSimulator.java',
      conversion/'domain/ConversionQuote.java',conversion/'domain/ConversionRequest.java',
@@ -35,6 +36,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      economy_domain/'EconomicQuoteReference.java',economy_application/'EconomicQuoteProvider.java',
      economy_application/'EconomicScenario.java',economy_application/'CalculateEconomicScenario.java',
      ROOT/'src/br/com/cambioclaro/app/FxCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/domain/MarketObservation.java',
+     market_presentation/'MarketMovementPresenter.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteSource.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteRepository.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketHistoryWriter.java',
@@ -63,7 +65,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'tests/RateTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
-     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java',ROOT/'tests/NewsPresenterTest.java',ROOT/'tests/EconomyHistoryPresenterTest.java',ROOT/'tests/EconomicScenarioPresenterTest.java'])
+     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java',ROOT/'tests/NewsPresenterTest.java',ROOT/'tests/EconomyHistoryPresenterTest.java',ROOT/'tests/EconomicScenarioPresenterTest.java',ROOT/'tests/MarketMovementPresenterTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
@@ -100,6 +102,8 @@ history_presentation_results=run([jdk_tool('java'),'-cp',classes,'EconomyHistory
 (ROOT/'build/economy-history-presentation-results.txt').write_text(history_presentation_results,encoding='utf8')
 scenario_presentation_results=run([jdk_tool('java'),'-cp',classes,'EconomicScenarioPresenterTest'])
 (ROOT/'build/economic-scenario-presentation-results.txt').write_text(scenario_presentation_results,encoding='utf8')
+movement_presentation_results=run([jdk_tool('java'),'-cp',classes,'MarketMovementPresenterTest'])
+(ROOT/'build/market-movement-presentation-results.txt').write_text(movement_presentation_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')

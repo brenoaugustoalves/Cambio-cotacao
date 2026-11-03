@@ -68,6 +68,8 @@ O simulador de custos foi organizado em `economy/domain`, `economy/application` 
 
 `RefreshMarketQuotes` coordena o lote usado pela tela principal e pelo widget: fonte → repositório → observações por moeda → arquivo de histórico e alertas. `StoreMarketBatch` compartilha somente busca e persistência com o simulador, sem acionar alertas. `RefreshStockQuotes` mantém erros independentes para ações e Ibovespa. `RefreshMarketHistory` separa carregamentos intradiários e diários e limita a janela pedida ao provedor; `AndroidMarketHistoryGateway` valida e grava cada série no seu repositório.
 
+`MarketMovementPresenter` calcula e formata alta, queda, estabilidade e ponto base a partir de observações tipadas e timestamps publicados. `IntradayMovement` agora é apenas o adaptador entre pontos persistidos Android e o apresentador puro usado pela tela e pelo gráfico acessível.
+
 ### Apresentação
 
 A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia abre sua própria atividade. Dentro de Moedas, navegação adicional isola Cotação, Gráfico, PTAX, Converter e Outras. Assim, o cliente abre apenas o assunto escolhido e não precisa percorrer uma única página longa.

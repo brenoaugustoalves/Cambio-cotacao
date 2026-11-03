@@ -1,55 +1,36 @@
 package br.com.cambioclaro.app;
 
+import br.com.cambioclaro.app.market.domain.MarketObservation;
+import br.com.cambioclaro.app.market.presentation.MarketMovementPresenter;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
-/** Formats only observed source values; deltas compare consecutive published observations. */
+/** Android model adapter retained for chart callers; wording and math live in the pure presenter. */
 public final class IntradayMovement {
-    private static final Locale BR=new Locale("pt","BR");
-    private static final DateTimeFormatter CLOCK=DateTimeFormatter.ofPattern("HH:mm",BR);
-    private static final DateTimeFormatter DATE_CLOCK=DateTimeFormatter.ofPattern("dd/MM HH:mm",BR);
-    private IntradayMovement(){}
+    private static final MarketMovementPresenter PRESENTER=new MarketMovementPresenter();
+    private IntradayMovement() { }
 
     public static BigDecimal absoluteDelta(MarketHistory.Point previous,MarketHistory.Point current){
-        if(previous==null||current==null)throw new IllegalArgumentException("Duas publicações são necessárias");
-        return current.ask.subtract(previous.ask);
+        return PRESENTER.absoluteDelta(adapt(previous),adapt(current));
     }
-
     public static BigDecimal percentDelta(MarketHistory.Point previous,MarketHistory.Point current){
-        if(previous==null||current==null||previous.ask.signum()<=0)throw new IllegalArgumentException("Base inválida");
-        return absoluteDelta(previous,current).multiply(new BigDecimal("100")).divide(previous.ask,6,RoundingMode.HALF_UP);
+        return PRESENTER.percentDelta(adapt(previous),adapt(current));
     }
-
-    public static String summary(List<MarketHistory.Point> points,int index){
-        return summary(points,index,false);
-    }
+    public static String summary(List<MarketHistory.Point> points,int index){return summary(points,index,false);}
     public static String summary(List<MarketHistory.Point> points,int index,boolean includeDate){
-        if(points==null||points.isEmpty()||index<0||index>=points.size())return "Sem publicação para comparar.";
-        MarketHistory.Point current=points.get(index);
-        String time=current.at.atZone(BcbClient.ZONE).format(includeDate?DATE_CLOCK:CLOCK);
-        if(index==0)return "Base do período · "+time+" · R$ "+value(current.ask)+" · variação indisponível sem publicação anterior.";
-        MarketHistory.Point previous=points.get(index-1);
-        BigDecimal delta=absoluteDelta(previous,current),percent=percentDelta(previous,current);
-        String direction=delta.signum()>0?"Subiu":delta.signum()<0?"Caiu":"Ficou estável";
-        String sign=delta.signum()>0?"+":delta.signum()<0?"−":"";
-        String pctSign=percent.signum()>0?"+":percent.signum()<0?"−":"";
-        String amount=sign.isEmpty()?"R$ "+value(delta.abs()):sign+"R$ "+value(delta.abs());
-        return time+" · "+direction+" "+amount+" ("+pctSign+value(percent.abs())+"%) desde "+previous.at.atZone(BcbClient.ZONE).format(includeDate?DATE_CLOCK:CLOCK)+" · cotação R$ "+value(current.ask);
+        return PRESENTER.summary(adapt(points),index,includeDate,BcbClient.ZONE);
     }
-
-    public static int direction(List<MarketHistory.Point> points,int index){
-        if(points==null||index<=0||index>=points.size())return 0;
-        return absoluteDelta(points.get(index-1),points.get(index)).signum();
+    public static int direction(List<MarketHistory.Point> points,int index){return PRESENTER.direction(adapt(points),index);}
+    public static String selectedMovement(List<MarketHistory.Point> points,int index,boolean includeDate){
+        return PRESENTER.selectedMovement(adapt(points),index,includeDate,BcbClient.ZONE);
     }
+    public static String value(BigDecimal amount){return PRESENTER.value(amount);}
 
-    public static String value(BigDecimal amount){
-        NumberFormat f=NumberFormat.getNumberInstance(BR);
-        int places=Math.max(4,Math.min(8,amount.scale()));
-        f.setMinimumFractionDigits(places);f.setMaximumFractionDigits(places);
-        return f.format(amount);
+    private static MarketObservation adapt(MarketHistory.Point point){return point==null?null:new MarketObservation(point.ask,point.at);}
+    private static List<MarketObservation> adapt(List<MarketHistory.Point> points){
+        if(points==null)return null;List<MarketObservation> result=new ArrayList<>(points.size());
+        for(MarketHistory.Point point:points)result.add(adapt(point));return result;
     }
 }

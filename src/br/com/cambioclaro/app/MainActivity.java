@@ -364,7 +364,7 @@ public final class MainActivity extends Activity {
         if(intradayMovement==null||intradayChangesToggle==null||intradayChanges==null)return;
         if(points==null||points.isEmpty()){intradayMovement.setText("Sem publicação real para comparar.");intradayChangesToggle.setVisibility(View.GONE);intradayChanges.removeAllViews();return;}
         int index=selected>=0&&selected<points.size()?selected:points.size()-1;
-        intradayMovement.setText(selectedMovement(points,index));int selectedDirection=IntradayMovement.direction(points,index);int movementColor=selectedDirection>0?MINT:selectedDirection<0?(light?0xFFA33122:0xFFF2B5A9):MUTED;int movementSurface=selectedDirection>0?(light?0xFFE5F3EE:0xFF173931):selectedDirection<0?(light?0xFFFCEAE8:0xFF3C2528):(light?0xFFF0F5F6:0xFF172A34);intradayMovement.setTextColor(movementColor);intradayMovement.setBackground(shape(movementSurface,12));
+        intradayMovement.setText(IntradayMovement.selectedMovement(points,index,marketPeriodDays>1));int selectedDirection=IntradayMovement.direction(points,index);int movementColor=selectedDirection>0?MINT:selectedDirection<0?(light?0xFFA33122:0xFFF2B5A9):MUTED;int movementSurface=selectedDirection>0?(light?0xFFE5F3EE:0xFF173931):selectedDirection<0?(light?0xFFFCEAE8:0xFF3C2528):(light?0xFFF0F5F6:0xFF172A34);intradayMovement.setTextColor(movementColor);intradayMovement.setBackground(shape(movementSurface,12));
         int changes=Math.max(0,points.size()-1);boolean hasOlder=changes>6;intradayChangesToggle.setVisibility(hasOlder?View.VISIBLE:View.GONE);intradayChangesToggle.setText(intradayChangesExpanded?"Mostrar só as 6 mais recentes ↑":"Ver todas as "+changes+" alterações");
         intradayChanges.removeAllViews();
         add(intradayChanges,label("PUBLICAÇÕES E DIFERENÇAS",11,MUTED,true),2);
@@ -376,7 +376,6 @@ public final class MainActivity extends Activity {
         }
         if(!intradayChangesExpanded&&hasOlder)add(intradayChanges,label("Exibindo as seis variações mais recentes. Abra o histórico completo para consultar as anteriores.",10,MUTED,false),4);
     }
-    private String selectedMovement(List<MarketHistory.Point> points,int index){MarketHistory.Point current=points.get(index);DateTimeFormatter format=DateTimeFormatter.ofPattern(marketPeriodDays>1?"dd/MM HH:mm":"HH:mm",br);String time=current.at.atZone(BcbClient.ZONE).format(format);if(index==0)return "BASE · "+time+" · R$ "+IntradayMovement.value(current.ask)+" · sem publicação anterior";MarketHistory.Point previous=points.get(index-1);BigDecimal delta=IntradayMovement.absoluteDelta(previous,current),change=IntradayMovement.percentDelta(previous,current);String direction=delta.signum()>0?"▲ Alta ":delta.signum()<0?"▼ Baixa ":"● Estável ";String sign=delta.signum()>0?"+":delta.signum()<0?"−":"";String percentSign=change.signum()>0?"+":change.signum()<0?"−":"";String previousTime=previous.at.atZone(BcbClient.ZONE).format(format);return time+" · "+direction+sign+"R$ "+IntradayMovement.value(delta.abs())+" ("+percentSign+IntradayMovement.value(change.abs())+"%) desde "+previousTime+" · atual R$ "+IntradayMovement.value(current.ask);}
     private void load(){
         if(loading)return;loading=true;lastFullRefresh=System.currentTimeMillis();refresh.setEnabled(false);refresh.setText("Buscando…");
         loadMarket();
