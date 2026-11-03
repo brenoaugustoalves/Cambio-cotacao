@@ -38,8 +38,11 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      economy_application/'EconomicScenario.java',economy_application/'CalculateEconomicScenario.java',
      ROOT/'src/br/com/cambioclaro/app/FxCurrency.java',ROOT/'src/br/com/cambioclaro/app/market/domain/MarketObservation.java',
      ROOT/'src/br/com/cambioclaro/app/market/domain/Comparison.java',
+     ROOT/'src/br/com/cambioclaro/app/market/domain/MarketPeriod.java',
+     ROOT/'src/br/com/cambioclaro/app/market/domain/YearOverYearComparison.java',
      ROOT/'src/br/com/cambioclaro/app/market/domain/FuturesContracts.java',
      market_presentation/'MarketMovementPresenter.java',
+     market_presentation/'YearOverYearComparisonPresenter.java',
      market_presentation/'MarketQuoteDisplay.java',market_presentation/'MarketQuotePresenter.java',
      market_presentation/'PtaxQuoteDisplay.java',market_presentation/'PtaxQuotePresenter.java',
      market_presentation/'CurrencyOverviewDisplay.java',market_presentation/'CurrencyOverviewPresenter.java',
@@ -70,7 +73,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'src/br/com/cambioclaro/app/market/application/EconomyFreshnessPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/PtaxRefreshPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/domain/PtaxBatch.java',
-     ROOT/'tests/RateTest.java',ROOT/'tests/ComparisonTest.java',ROOT/'tests/FuturesContractsTest.java',ROOT/'tests/FuturesContractPresenterTest.java',ROOT/'tests/MainNavigationPresenterTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
+     ROOT/'tests/RateTest.java',ROOT/'tests/ComparisonTest.java',ROOT/'tests/MarketPeriodTest.java',ROOT/'tests/YearOverYearComparisonTest.java',ROOT/'tests/FuturesContractsTest.java',ROOT/'tests/FuturesContractPresenterTest.java',ROOT/'tests/MainNavigationPresenterTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
      ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java',ROOT/'tests/NewsPresenterTest.java',ROOT/'tests/EconomyHistoryPresenterTest.java',ROOT/'tests/EconomicScenarioPresenterTest.java',ROOT/'tests/MarketMovementPresenterTest.java',ROOT/'tests/MarketQuotePresenterTest.java',ROOT/'tests/PtaxQuotePresenterTest.java',ROOT/'tests/CurrencyOverviewPresenterTest.java'])
@@ -126,6 +129,10 @@ ptax_quote_presentation_results=run([jdk_tool('java'),'-cp',classes,'PtaxQuotePr
 (ROOT/'build/ptax-quote-presentation-results.txt').write_text(ptax_quote_presentation_results,encoding='utf8')
 currency_overview_results=run([jdk_tool('java'),'-cp',classes,'CurrencyOverviewPresenterTest'])
 (ROOT/'build/currency-overview-presentation-results.txt').write_text(currency_overview_results,encoding='utf8')
+period_results=run([jdk_tool('java'),'-cp',classes,'MarketPeriodTest'])
+(ROOT/'build/market-period-results.txt').write_text(period_results,encoding='utf8')
+year_comparison_results=run([jdk_tool('java'),'-cp',classes,'YearOverYearComparisonTest'])
+(ROOT/'build/year-over-year-comparison-results.txt').write_text(year_comparison_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')

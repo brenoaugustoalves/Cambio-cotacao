@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.*;
 import android.view.MotionEvent;
 import android.view.View;
+import br.com.cambioclaro.app.market.domain.MarketPeriod;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -49,7 +50,7 @@ public final class IntradayView extends View {
         int idx=Math.max(0,Math.min(selected,points.size()-1));float sx=xs[idx],sy=ys[idx];line(c,sx,top,sx,bottom,muted,1);paint.setColor(accent);c.drawCircle(sx,sy,dp(5),paint);paint.setColor(ink);c.drawCircle(sx,sy,dp(2),paint);
         String axisPattern=periodDays>=365?"dd/MM/uu":"dd/MM";if(periodDays==1)axisPattern="HH:mm";label(c,axis(start,axisPattern),left,bottom+dp(22),muted,10,Paint.Align.LEFT);label(c,axis(start+spanTime/2,axisPattern),(left+right)/2,bottom+dp(22),muted,10,Paint.Align.CENTER);label(c,axis(end,axisPattern),right,bottom+dp(22),muted,10,Paint.Align.RIGHT);
     }
-    private long rangeStart(long first,long now){if(periodDays<=1)return BcbClient.today().atStartOfDay(BcbClient.ZONE).toInstant().toEpochMilli();return Math.min(first,now-periodDays*86400000L);}
+    private long rangeStart(long first,long now){long selected=MarketPeriod.startDate(periodDays,BcbClient.today()).atStartOfDay(BcbClient.ZONE).toInstant().toEpochMilli();return Math.min(first,selected);}
     private long rangeEnd(long last,long now){return Math.max(last,now);}
     private String axis(long millis,String pattern){return Instant.ofEpochMilli(millis).atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern(pattern,br));}
     @Override public boolean onTouchEvent(MotionEvent e){if(points.isEmpty())return super.onTouchEvent(e);int action=e.getAction();if(action==MotionEvent.ACTION_DOWN||action==MotionEvent.ACTION_MOVE||action==MotionEvent.ACTION_UP){float x=Math.max(left,Math.min(right,e.getX()));long first=points.get(0).at.toEpochMilli(),last=points.get(points.size()-1).at.toEpochMilli();long now=Instant.now().toEpochMilli(),start=rangeStart(first,now),end=rangeEnd(last,now);long target=start+(long)((x-left)/Math.max(1,right-left)*(end-start));int best=0;long distance=Long.MAX_VALUE;for(int i=0;i<points.size();i++){long d=Math.abs(points.get(i).at.toEpochMilli()-target);if(d<distance){best=i;distance=d;}}selected=best;describe();invalidate();notifySelection();if(action==MotionEvent.ACTION_UP)performClick();return true;}return super.onTouchEvent(e);}

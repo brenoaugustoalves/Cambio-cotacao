@@ -1,6 +1,8 @@
 package br.com.cambioclaro.app.market.application;
 
 import br.com.cambioclaro.app.FxCurrency;
+import java.time.Duration;
+import java.time.LocalDate;
 
 /** Coordinates source reads and persistence for real intraday and daily history. */
 public final class RefreshMarketHistory {
@@ -18,10 +20,12 @@ public final class RefreshMarketHistory {
         history.saveIntraday(currency, source.fetchIntraday(currency));
     }
 
-    public void refreshDaily(FxCurrency currency, int observations) throws Exception {
+    public void refreshDaily(FxCurrency currency, LocalDate startDate, LocalDate endDate) throws Exception {
         requireCurrency(currency);
-        if (observations < 1 || observations > 365) throw new IllegalArgumentException("Período inválido");
-        history.saveDaily(currency, observations, source.fetchDaily(currency, observations));
+        if (startDate == null || endDate == null || startDate.isAfter(endDate)
+                || Duration.between(startDate.atStartOfDay(), endDate.atStartOfDay()).toDays() > 366)
+            throw new IllegalArgumentException("Período inválido");
+        history.saveDaily(currency, startDate, endDate, source.fetchDaily(currency, startDate, endDate));
     }
 
     private static void requireCurrency(FxCurrency currency) {

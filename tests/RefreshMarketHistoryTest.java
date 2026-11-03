@@ -2,6 +2,7 @@ import br.com.cambioclaro.app.FxCurrency;
 import br.com.cambioclaro.app.market.application.MarketHistoryRepository;
 import br.com.cambioclaro.app.market.application.MarketHistorySource;
 import br.com.cambioclaro.app.market.application.RefreshMarketHistory;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,15 +15,15 @@ public final class RefreshMarketHistoryTest {
 
     private static final class FakeGateway implements MarketHistorySource, MarketHistoryRepository {
         final List<String> events = new ArrayList<>();
-        int dailyDays;
+        LocalDate dailyStart,dailyEnd;
         boolean failSource;
         @Override public String fetchIntraday(FxCurrency currency) throws Exception {
             events.add("fetch-intraday:" + currency.name());
             if (failSource) throw new java.io.IOException("source failed");
             return "intraday-response";
         }
-        @Override public String fetchDaily(FxCurrency currency, int days) throws Exception {
-            dailyDays = days;
+        @Override public String fetchDaily(FxCurrency currency, LocalDate startDate, LocalDate endDate) throws Exception {
+            dailyStart = startDate;dailyEnd=endDate;
             events.add("fetch-daily:" + currency.name());
             if (failSource) throw new java.io.IOException("source failed");
             return "daily-response";
@@ -30,8 +31,8 @@ public final class RefreshMarketHistoryTest {
         @Override public void saveIntraday(FxCurrency currency, String raw) {
             events.add("save-intraday:" + currency.name() + ":" + raw);
         }
-        @Override public void saveDaily(FxCurrency currency, int observations, String raw) {
-            events.add("save-daily:" + currency.name() + ":" + observations + ":" + raw);
+        @Override public void saveDaily(FxCurrency currency, LocalDate startDate, LocalDate endDate, String raw) {
+            events.add("save-daily:" + currency.name() + ":" + startDate + ":" + endDate + ":" + raw);
         }
     }
 
@@ -43,18 +44,21 @@ public final class RefreshMarketHistoryTest {
                 "Intraday request persists the same provider response after fetching");
 
         gateway.events.clear();
-        refresh.refreshDaily(FxCurrency.EUR, 5);
-        check(gateway.dailyDays == 5 && gateway.events.equals(java.util.Arrays.asList(
-                "fetch-daily:EUR", "save-daily:EUR:5:daily-response")),
-                "Five calendar days request the matching date range and persist separately");
-        refresh.refreshDaily(FxCurrency.EUR, 30);
-        check(gateway.dailyDays == 30, "One-month selection requests thirty calendar days");
-        refresh.refreshDaily(FxCurrency.GBP, 365);
-        check(gateway.dailyDays == 365, "One-year selection requests its exact 365-day period");
+        LocalDate fiveDaysStart=LocalDate.of(2026,10,29),rangeEnd=LocalDate.of(2026,11,3);
+        refresh.refreshDaily(FxCurrency.EUR, fiveDaysStart, rangeEnd);
+        check(gateway.dailyStart.equals(fiveDaysStart)&&gateway.dailyEnd.equals(rangeEnd)&&gateway.events.equals(java.util.Arrays.asList(
+                "fetch-daily:EUR", "save-daily:EUR:2026-10-29:2026-11-03:daily-response")),
+                "Five-day selection fetches and saves the exact calendar boundaries");
+        LocalDate monthStart=LocalDate.of(2026,10,3);
+        refresh.refreshDaily(FxCurrency.EUR, monthStart, rangeEnd);
+        check(gateway.dailyStart.equals(monthStart)&&gateway.dailyEnd.equals(rangeEnd), "Monthly selection preserves month boundaries");
+        LocalDate priorYear=LocalDate.of(2025,11,3);
+        refresh.refreshDaily(FxCurrency.GBP, priorYear.minusYears(1), priorYear);
+        check(gateway.dailyStart.equals(LocalDate.of(2024,11,3))&&gateway.dailyEnd.equals(priorYear), "Year comparison fetches the same prior-year date range");
 
         int eventsBeforeInvalid = gateway.events.size();
         boolean rejected = false;
-        try { refresh.refreshDaily(FxCurrency.USD, 366); }
+        try { refresh.refreshDaily(FxCurrency.USD, LocalDate.of(2024,10,31), LocalDate.of(2026,11,3)); }
         catch (IllegalArgumentException expected) { rejected = true; }
         check(rejected && gateway.events.size() == eventsBeforeInvalid, "Invalid period is rejected before network access");
 

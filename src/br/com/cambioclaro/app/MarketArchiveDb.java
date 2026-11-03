@@ -13,6 +13,7 @@ import java.util.*;
 public final class MarketArchiveDb extends SQLiteOpenHelper {
     public static final int MAX_POINTS=5000;
     public static final long MAX_AGE_DAYS=365;
+    public static final long DAILY_MAX_AGE_DAYS=732;
     private static final String TABLE="market_observations";
     private static final String DAILY_TABLE="market_daily_observations";
     private static final java.util.regex.Pattern PRICE=java.util.regex.Pattern.compile("[0-9]{1,8}(\\.[0-9]{1,8})?");
@@ -29,7 +30,7 @@ public final class MarketArchiveDb extends SQLiteOpenHelper {
     }
     public synchronized void mergeDaily(FxCurrency currency,List<MarketHistory.Point> points,Instant now){mergeInto(DAILY_TABLE,currency,points,now);}
     private void mergeInto(String table,FxCurrency currency,List<MarketHistory.Point> points,Instant now){
-        if(currency==null||points==null||points.isEmpty())return;long current=now.toEpochMilli(),cutoff=now.minusSeconds(MAX_AGE_DAYS*86400L).toEpochMilli();SQLiteDatabase db=getWritableDatabase();db.beginTransaction();
+        if(currency==null||points==null||points.isEmpty())return;long current=now.toEpochMilli(),retentionDays=DAILY_TABLE.equals(table)?DAILY_MAX_AGE_DAYS:MAX_AGE_DAYS,cutoff=now.minusSeconds(retentionDays*86400L).toEpochMilli();SQLiteDatabase db=getWritableDatabase();db.beginTransaction();
         try{
             db.delete(table,"currency=? AND observed_at_ms<?",new String[]{currency.name(),Long.toString(cutoff)});
             for(MarketHistory.Point p:points){if(p==null||p.at==null||!valid(p.ask))continue;long at=p.at.toEpochMilli();if(at<cutoff||at>current+300000L)continue;ContentValues row=new ContentValues();row.put("currency",currency.name());row.put("observed_at_ms",at);row.put("ask",p.ask.toPlainString());db.insertWithOnConflict(table,null,row,SQLiteDatabase.CONFLICT_REPLACE);}
