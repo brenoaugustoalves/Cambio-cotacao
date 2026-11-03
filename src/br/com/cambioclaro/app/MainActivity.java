@@ -34,6 +34,8 @@ import br.com.cambioclaro.app.market.domain.Comparison;
 import br.com.cambioclaro.app.market.domain.MarketObservation;
 import br.com.cambioclaro.app.market.presentation.MarketQuotePresenter;
 import br.com.cambioclaro.app.market.presentation.MarketQuoteDisplay;
+import br.com.cambioclaro.app.market.presentation.PtaxQuotePresenter;
+import br.com.cambioclaro.app.market.presentation.PtaxQuoteDisplay;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -58,6 +60,7 @@ public final class MainActivity extends Activity {
     private RefreshPtaxRates ptaxRefresh;
     private RefreshTourismQuotes tourismRefresh;
     private final MarketQuotePresenter marketQuotePresenter=new MarketQuotePresenter();
+    private final PtaxQuotePresenter ptaxQuotePresenter=new PtaxQuotePresenter();
     private boolean ptaxOpen=false;
     public static final long AUTO_REFRESH_MS=MarketRefreshPolicy.foregroundInterval(false,false);
     private static final long FULL_REFRESH_MS=MarketRefreshPolicy.FULL_REFRESH_INTERVAL_MS;
@@ -429,12 +432,7 @@ public final class MainActivity extends Activity {
         marketMove.setTextColor(quoteDisplay.direction>0?MINT:quoteDisplay.direction<0?(light?0xFFA33122:0xFFF2B5A9):MUTED);setMarketFreshness(quoteDisplay.freshness,quoteDisplay.stale);
         if(quoteDisplay.exactRate!=null)marketSourceNote.setText(quoteDisplay.exactRate);
         pairText.setText(tourismMode?"USD turismo / BRL":currency.name()+" / BRL");unitText.setText("1 "+currency.name()+" · "+currency.label.toUpperCase(br));chartUnit.setText("PTAX de venda · R$ por "+currency.name()+" 1");
-        if(rates.isEmpty()){rateText.setText("—");quoteDate.setText("Sem cotação recebida da fonte");deltaText.setText("Variação indisponível");}
-        else {
-            Rate latest=rates.get(rates.size()-1);rateText.setText(money(latest.sell,4));
-            quoteDate.setText("Publicado em "+latest.at.format(DateTimeFormatter.ofPattern("dd/MM/uuuu 'às' HH:mm",br))+" (Brasília)"+(!latest.at.toLocalDate().equals(BcbClient.today())?"\nSem publicação de hoje nesta consulta.":""));
-            if(rates.size()>1){BigDecimal change=Rate.variation(rates.get(rates.size()-2).sell,latest.sell);deltaText.setText(percent(change)+" vs. publicação PTAX anterior (Banco Central)");deltaText.setTextColor(change.signum()<0?(light?0xFFA33122:0xFFF2B5A9):MINT);}else deltaText.setText("Sem publicação PTAX anterior para comparar");
-        }
+        PtaxQuoteDisplay ptax=ptaxQuotePresenter.present(rates,BcbClient.today(),BcbClient.ZONE);rateText.setText(ptax.value);quoteDate.setText(ptax.publishedAt);deltaText.setText(ptax.change);deltaText.setTextColor(ptax.direction<0?(light?0xFFA33122:0xFFF2B5A9):rates.size()>1?MINT:MUTED);
         updateIntraday();updateChart();updateConversion();updateOverview();updateStocks();
     }
     private void updateOverview(){

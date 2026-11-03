@@ -39,6 +39,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'src/br/com/cambioclaro/app/market/domain/Comparison.java',
      market_presentation/'MarketMovementPresenter.java',
      market_presentation/'MarketQuoteDisplay.java',market_presentation/'MarketQuotePresenter.java',
+     market_presentation/'PtaxQuoteDisplay.java',market_presentation/'PtaxQuotePresenter.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteSource.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteRepository.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketHistoryWriter.java',
@@ -67,7 +68,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'tests/RateTest.java',ROOT/'tests/ComparisonTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
-     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java',ROOT/'tests/NewsPresenterTest.java',ROOT/'tests/EconomyHistoryPresenterTest.java',ROOT/'tests/EconomicScenarioPresenterTest.java',ROOT/'tests/MarketMovementPresenterTest.java',ROOT/'tests/MarketQuotePresenterTest.java'])
+     ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java',ROOT/'tests/NewsPresenterTest.java',ROOT/'tests/EconomyHistoryPresenterTest.java',ROOT/'tests/EconomicScenarioPresenterTest.java',ROOT/'tests/MarketMovementPresenterTest.java',ROOT/'tests/MarketQuotePresenterTest.java',ROOT/'tests/PtaxQuotePresenterTest.java'])
 domain=run([jdk_tool('java'),'-cp',classes,'RateTest'])
 (ROOT/'build/domain-results.txt').write_text(domain,encoding='utf8')
 comparison_results=run([jdk_tool('java'),'-cp',classes,'ComparisonTest'])
@@ -110,6 +111,8 @@ movement_presentation_results=run([jdk_tool('java'),'-cp',classes,'MarketMovemen
 (ROOT/'build/market-movement-presentation-results.txt').write_text(movement_presentation_results,encoding='utf8')
 market_quote_presentation_results=run([jdk_tool('java'),'-cp',classes,'MarketQuotePresenterTest'])
 (ROOT/'build/market-quote-presentation-results.txt').write_text(market_quote_presentation_results,encoding='utf8')
+ptax_quote_presentation_results=run([jdk_tool('java'),'-cp',classes,'PtaxQuotePresenterTest'])
+(ROOT/'build/ptax-quote-presentation-results.txt').write_text(ptax_quote_presentation_results,encoding='utf8')
 if args.bundle:run([sys.executable,'build_bundle.py'])
 if args.emulator:
     if not args.emulator.startswith('emulator-'):raise SystemExit('Use only a disposable emulator; instrumentation changes test state and notification permission.')
