@@ -38,6 +38,7 @@ import br.com.cambioclaro.app.market.presentation.PtaxQuotePresenter;
 import br.com.cambioclaro.app.market.presentation.PtaxQuoteDisplay;
 import br.com.cambioclaro.app.market.presentation.CurrencyOverviewPresenter;
 import br.com.cambioclaro.app.market.presentation.CurrencyOverviewDisplay;
+import br.com.cambioclaro.app.market.domain.FuturesContracts;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;

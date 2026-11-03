@@ -1,4 +1,4 @@
-package br.com.cambioclaro.app;
+package br.com.cambioclaro.app.market.domain;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -37,7 +37,7 @@ public final class FuturesContracts {
         ALL=Collections.unmodifiableList(all);
     }
     public static List<FuturesContracts> available(String base,LocalDate day){
-        if(!base.equals("WIN")&&!base.equals("DOL")&&!base.equals("WDO"))throw new IllegalArgumentException("Contrato desconhecido");
+        if(base==null||day==null||(!base.equals("WIN")&&!base.equals("DOL")&&!base.equals("WDO")))throw new IllegalArgumentException("Contrato ou data desconhecidos");
         List<FuturesContracts> result=new ArrayList<>();
         for(FuturesContracts c:ALL)if(c.base.equals(base)&&!day.isAfter(c.lastTrade))result.add(c);
         result.sort((a,b)->a.expiry.compareTo(b.expiry));return result;
