@@ -18,6 +18,8 @@ import br.com.cambioclaro.app.economy.presentation.EconomyPresenter;
 import br.com.cambioclaro.app.economy.presentation.EconomyDisplay;
 import br.com.cambioclaro.app.economy.presentation.NewsDisplay;
 import br.com.cambioclaro.app.economy.presentation.NewsPresenter;
+import br.com.cambioclaro.app.economy.presentation.HistoryDisplay;
+import br.com.cambioclaro.app.economy.presentation.EconomyHistoryPresenter;
 import br.com.cambioclaro.app.economy.application.CalculateEconomicScenario;
 import br.com.cambioclaro.app.economy.application.EconomicScenario;
 import br.com.cambioclaro.app.economy.domain.EconomicSimulator;
@@ -34,7 +36,7 @@ import java.util.List;
 /** Macro overview. Observed data and Focus market expectations are deliberately separate. */
 public final class EconomyActivity extends Activity {
     private final ExecutorService worker=Executors.newFixedThreadPool(3);private final Handler main=new Handler(Looper.getMainLooper());
-    private AndroidEconomySources economySources;private final RefreshSources refreshSources=new RefreshSources();private final EconomyPresenter economyPresenter=new EconomyPresenter();private final NewsPresenter newsPresenter=new NewsPresenter();private CalculateEconomicScenario scenarioUseCase;
+    private AndroidEconomySources economySources;private final RefreshSources refreshSources=new RefreshSources();private final EconomyPresenter economyPresenter=new EconomyPresenter();private final NewsPresenter newsPresenter=new NewsPresenter();private final EconomyHistoryPresenter historyPresenter=new EconomyHistoryPresenter();private CalculateEconomicScenario scenarioUseCase;
     private UiStyle style;private LinearLayout body,newsItems,globalNewsItems,historyItems;private TextView status,selic,ipca,focusIpca,focusSelic,focusFx,focusPib,scenarioStatus,scenarioResult,newsStatus,globalNewsStatus,historyStatus;private Button refresh,calculateScenario;private Spinner scenarioCurrency,scenarioSource;private EditText scenarioAmount,scenarioSpread,scenarioExtra,scenarioFixed;private boolean loading,scenarioLoading,newsLoading,globalNewsLoading,historyLoading;
     private int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
     private TextView text(String value,int size,boolean bold){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTypeface(android.graphics.Typeface.create("sans-serif",bold?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL));style.text(t);return t;}
@@ -72,7 +74,18 @@ public final class EconomyActivity extends Activity {
         globalNewsStatus.setText(display.status);bindNews(globalNewsItems,display);
     }
     private void loadHistory(boolean force){if(historyLoading)return;if(!force&&EconomyHistory.fresh(this,System.currentTimeMillis()))return;historyLoading=true;historyStatus.setText("Consultando histórico SGS oficial…");worker.execute(()->{LocalDate today=BcbClient.today();RefreshSources.Result refreshed=refreshSources.execute(economySources.history(today));long at=System.currentTimeMillis();EconomyHistory.markAttempt(getApplicationContext(),at);List<EconomyHistory.Month> result=EconomyHistory.cached(getApplicationContext(),today);String error=sourceErrors(refreshed," indisponível");for(RefreshSources.Failure failure:refreshed.failures)Diagnostics.record(getApplicationContext(),"histórico econômico / "+failure.sourceId,failure.cause);final String errors=error;final long fetched=EconomyHistory.cachedAt(getApplicationContext());main.post(()->{historyLoading=false;if(isFinishing()||isDestroyed())return;renderHistory(result,errors,fetched);});});}
-    private void renderHistory(List<EconomyHistory.Month> months,String failure,long fetchedAt){if(historyItems==null||historyStatus==null)return;historyItems.removeAllViews();if(months==null||months.isEmpty()){historyStatus.setText(failure==null?"Sem observações históricas válidas.":"Falha em fonte histórica ("+failure+"). Nenhum valor estimado.");return;}String time=fetchedAt<=0?"hora da consulta indisponível":DateTimeFormatter.ofPattern("dd/MM HH:mm",new Locale("pt","BR")).format(java.time.Instant.ofEpochMilli(fetchedAt).atZone(BcbClient.ZONE))+" (Brasília)";historyStatus.setText((failure==null?"Consulta ":"Alguma fonte indisponível · cache consultado ")+time+". Cada coluna mantém sua unidade e data.");for(int i=months.size()-1;i>=0;i--){EconomyHistory.Month month=months.get(i);String label=month.month.format(DateTimeFormatter.ofPattern("MM/uuuu",new Locale("pt","BR")));TextView title=text(label,14,true);add(historyItems,title,8);String ipcaLine=month.ipca==null?"IPCA · sem observação":"IPCA · "+number(month.ipca.value,2)+"% no mês · "+date(month.ipca.date);String selicLine=month.selic==null?"Meta Selic · sem observação":"Meta Selic · "+number(month.selic.value,2)+"% a.a. · "+date(month.selic.date);add(historyItems,text(ipcaLine+"\n"+selicLine,13,false),3);}}
+    private void renderHistory(List<EconomyHistory.Month> months,String failure,long fetchedAt){
+        if(historyItems==null||historyStatus==null)return;
+        List<EconomyHistoryPresenter.Month> values=new java.util.ArrayList<>();
+        if(months!=null)for(EconomyHistory.Month month:months){
+            EconomyHistoryPresenter.Observation ipca=month.ipca==null?null:new EconomyHistoryPresenter.Observation(month.ipca.date,month.ipca.value);
+            EconomyHistoryPresenter.Observation selic=month.selic==null?null:new EconomyHistoryPresenter.Observation(month.selic.date,month.selic.value);
+            values.add(new EconomyHistoryPresenter.Month(month.month,ipca,selic));
+        }
+        HistoryDisplay display=historyPresenter.present(values,failure,fetchedAt,System.currentTimeMillis(),BcbClient.ZONE);
+        historyStatus.setText(display.status);historyItems.removeAllViews();
+        for(HistoryDisplay.Month month:display.months){TextView title=text(month.title,14,true);add(historyItems,title,8);add(historyItems,text(month.observations,13,false),3);}
+    }
     private void loadNews(boolean force){if(newsLoading)return;if(!force&&BcbNews.fresh(this,System.currentTimeMillis()))return;newsLoading=true;newsStatus.setText("Consultando feed oficial de comunicados…");worker.execute(()->{RefreshSources.Result refreshed=refreshSources.execute(economySources.bcbNews(BcbClient.today().getYear(),java.time.Instant.now()));for(RefreshSources.Failure failure:refreshed.failures)Diagnostics.record(getApplicationContext(),"feed de comunicados BCB",failure.cause);List<BcbNews.Item> entries=BcbNews.cached(getApplicationContext(),java.time.Instant.now());String failure=refreshed.hasFailures()?"Comunicados indisponíveis agora; tentando usar a última cópia válida.":null;final String error=failure;final long at=BcbNews.cachedAt(getApplicationContext());main.post(()->{newsLoading=false;if(isFinishing()||isDestroyed())return;renderNews(entries,error,at);});});}
     private void renderNews(List<BcbNews.Item> entries,String failure,long fetchedAt){
         if(newsItems==null||newsStatus==null)return;

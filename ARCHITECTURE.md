@@ -58,6 +58,8 @@ Para conversão comercial, uma cotação de mercado ausente permite usar a últi
 
 `NewsPresenter` organiza título, fonte, link original, data de publicação e estado parcial para feeds do BC, Fed e BCE. A Activity se limita a converter os itens validados para o modelo e criar os botões/link; datas e links publicados não são gerados nem reescritos.
 
+`EconomyHistoryPresenter` recebe observações mensais SGS alinhadas e cria linhas para exibição. A ordem mais recente primeiro e a formatação são decisões testáveis; mês ou série sem publicação continuam marcados como “sem observação”.
+
 O simulador de custos foi organizado em `economy/domain`, `economy/application` e adaptador Android. `CalculateEconomicScenario` solicita uma referência publicada pela porta `EconomicQuoteProvider` e aplica `EconomicSimulator`; `AndroidEconomicQuoteProvider` escolhe mercado ou PTAX, usa cache válido como fallback identificado e preserva o horário/origem. Sem uma cotação válida, o caso não calcula nem cria substitutos.
 
 `PtaxRefreshPolicy` define quando cabe consultar novamente a PTAX salva no widget e no resumo, com intervalos explícitos e tratamento de timestamp futuro sem tempestade de chamadas.
