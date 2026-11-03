@@ -82,6 +82,8 @@ O simulador de custos foi organizado em `economy/domain`, `economy/application` 
 
 `FuturesContractPresenter` transforma o contrato selecionado em texto para a tela e marca cotação, variação, horário e atraso como indisponíveis enquanto não houver provedor. `MainActivity` apenas conecta seleção e view, sem montar os textos de negócio.
 
+`MainNavigationPresenter` normaliza destinos restaurados e rejeita valores antigos/desconhecidos, retornando às seções visíveis por padrão. A Activity aplica o estado normalizado às views e persiste apenas destinos aceitos.
+
 ### Apresentação
 
 A tela principal agrupa componentes em destinos Moedas, Bolsa e Fontes; Economia abre sua própria atividade. Dentro de Moedas, navegação adicional isola Cotação, Gráfico, PTAX, Converter e Outras. Assim, o cliente abre apenas o assunto escolhido e não precisa percorrer uma única página longa.

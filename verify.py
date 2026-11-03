@@ -43,6 +43,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      market_presentation/'PtaxQuoteDisplay.java',market_presentation/'PtaxQuotePresenter.java',
      market_presentation/'CurrencyOverviewDisplay.java',market_presentation/'CurrencyOverviewPresenter.java',
      market_presentation/'FuturesContractDisplay.java',market_presentation/'FuturesContractPresenter.java',
+     market_presentation/'MainNavigationDisplay.java',market_presentation/'MainNavigationPresenter.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteSource.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketQuoteRepository.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/MarketHistoryWriter.java',
@@ -68,7 +69,7 @@ run([jdk_tool('javac'),'-encoding','UTF-8','--release','8','-d',classes,
      ROOT/'src/br/com/cambioclaro/app/market/application/EconomyFreshnessPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/application/PtaxRefreshPolicy.java',
      ROOT/'src/br/com/cambioclaro/app/market/domain/PtaxBatch.java',
-     ROOT/'tests/RateTest.java',ROOT/'tests/ComparisonTest.java',ROOT/'tests/FuturesContractsTest.java',ROOT/'tests/FuturesContractPresenterTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
+     ROOT/'tests/RateTest.java',ROOT/'tests/ComparisonTest.java',ROOT/'tests/FuturesContractsTest.java',ROOT/'tests/FuturesContractPresenterTest.java',ROOT/'tests/MainNavigationPresenterTest.java',ROOT/'tests/ConversionTest.java',ROOT/'tests/ConversionPresenterTest.java',
      ROOT/'tests/MarketRefreshPolicyTest.java',ROOT/'tests/LatestRequestCoordinatorTest.java',
      ROOT/'tests/RefreshMarketQuotesTest.java',ROOT/'tests/RefreshStockQuotesTest.java',
      ROOT/'tests/RefreshMarketHistoryTest.java',ROOT/'tests/RefreshPtaxRatesTest.java',ROOT/'tests/RefreshTourismQuotesTest.java',ROOT/'tests/RefreshSourcesTest.java',ROOT/'tests/EconomyFreshnessPolicyTest.java',ROOT/'tests/PtaxRefreshPolicyTest.java',ROOT/'tests/EconomyPresenterTest.java',ROOT/'tests/CalculateEconomicScenarioTest.java',ROOT/'tests/NewsPresenterTest.java',ROOT/'tests/EconomyHistoryPresenterTest.java',ROOT/'tests/EconomicScenarioPresenterTest.java',ROOT/'tests/MarketMovementPresenterTest.java',ROOT/'tests/MarketQuotePresenterTest.java',ROOT/'tests/PtaxQuotePresenterTest.java',ROOT/'tests/CurrencyOverviewPresenterTest.java'])
@@ -80,6 +81,8 @@ futures_contract_results=run([jdk_tool('java'),'-cp',classes,'FuturesContractsTe
 (ROOT/'build/futures-contract-results.txt').write_text(futures_contract_results,encoding='utf8')
 futures_presentation_results=run([jdk_tool('java'),'-cp',classes,'FuturesContractPresenterTest'])
 (ROOT/'build/futures-contract-presentation-results.txt').write_text(futures_presentation_results,encoding='utf8')
+navigation_presentation_results=run([jdk_tool('java'),'-cp',classes,'MainNavigationPresenterTest'])
+(ROOT/'build/navigation-presentation-results.txt').write_text(navigation_presentation_results,encoding='utf8')
 conversion_results=run([jdk_tool('java'),'-cp',classes,'ConversionTest'])
 (ROOT/'build/conversion-results.txt').write_text(conversion_results,encoding='utf8')
 refresh_policy_results=run([jdk_tool('java'),'-cp',classes,'MarketRefreshPolicyTest'])

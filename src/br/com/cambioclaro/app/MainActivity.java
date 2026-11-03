@@ -40,6 +40,8 @@ import br.com.cambioclaro.app.market.presentation.CurrencyOverviewPresenter;
 import br.com.cambioclaro.app.market.presentation.CurrencyOverviewDisplay;
 import br.com.cambioclaro.app.market.domain.FuturesContracts;
 import br.com.cambioclaro.app.market.presentation.FuturesContractPresenter;
+import br.com.cambioclaro.app.market.presentation.MainNavigationPresenter;
+import br.com.cambioclaro.app.market.presentation.MainNavigationDisplay;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -100,6 +102,7 @@ public final class MainActivity extends Activity {
     private final Map<String,Button> currencySectionButtons=new LinkedHashMap<>();
     private String selectedSection="Moedas";
     private String selectedCurrencySection="Cotação";
+    private final MainNavigationPresenter navigationPresenter=new MainNavigationPresenter();
     private LinearLayout overviewList;
     private Button overviewMore;
     private boolean overviewExpanded=false;
@@ -132,21 +135,21 @@ public final class MainActivity extends Activity {
     private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);return l;}
     private LinearLayout row(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.HORIZONTAL);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
     private void showMainSection(String destination){
-        if(currencySection==null)return;selectedSection=destination;
-        currencySection.setVisibility("Moedas".equals(destination)?View.VISIBLE:View.GONE);
-        marketsSection.setVisibility("Bolsa".equals(destination)?View.VISIBLE:View.GONE);
-        sourcesSection.setVisibility("Fontes".equals(destination)?View.VISIBLE:View.GONE);
-        for(Map.Entry<String,Button> entry:sectionButtons.entrySet()){Button tab=entry.getValue();boolean active=entry.getKey().equals(destination);tab.setSelected(active);tab.setBackground(shape(active?MINT:(light?0xFFE1ECEF:0xFF203641),14));tab.setTextColor(active?(light?0xFFFFFFFF:BG):MUTED);tab.setContentDescription(entry.getKey()+(active?", seção selecionada":", abrir seção"));}
+        if(currencySection==null)return;MainNavigationDisplay navigation=navigationPresenter.present(destination,selectedCurrencySection);String selected=navigation.mainSection;selectedSection=selected;
+        currencySection.setVisibility("Moedas".equals(selected)?View.VISIBLE:View.GONE);
+        marketsSection.setVisibility("Bolsa".equals(selected)?View.VISIBLE:View.GONE);
+        sourcesSection.setVisibility("Fontes".equals(selected)?View.VISIBLE:View.GONE);
+        for(Map.Entry<String,Button> entry:sectionButtons.entrySet()){Button tab=entry.getValue();boolean active=entry.getKey().equals(selected);tab.setSelected(active);tab.setBackground(shape(active?MINT:(light?0xFFE1ECEF:0xFF203641),14));tab.setTextColor(active?(light?0xFFFFFFFF:BG):MUTED);tab.setContentDescription(entry.getKey()+(active?", seção selecionada":", abrir seção"));}
         if(mainScroll!=null)mainScroll.smoothScrollTo(0,0);
     }
     private void showCurrencySection(String destination){
-        if(currencyQuoteSection==null)return;selectedCurrencySection=destination;
-        currencyQuoteSection.setVisibility("Cotação".equals(destination)?View.VISIBLE:View.GONE);
-        marketChartSection.setVisibility("Gráfico".equals(destination)?View.VISIBLE:View.GONE);
-        ptaxSection.setVisibility("PTAX".equals(destination)?View.VISIBLE:View.GONE);
-        converterSection.setVisibility("Converter".equals(destination)?View.VISIBLE:View.GONE);
-        compareSection.setVisibility("Outras".equals(destination)?View.VISIBLE:View.GONE);
-        for(Map.Entry<String,Button> entry:currencySectionButtons.entrySet()){Button tab=entry.getValue();boolean active=entry.getKey().equals(destination);tab.setSelected(active);tab.setBackground(shape(active?MINT:(light?0xFFE1ECEF:0xFF203641),12));tab.setTextColor(active?(light?0xFFFFFFFF:BG):MUTED);tab.setContentDescription(entry.getKey()+(active?", assunto selecionado":", abrir assunto"));}if(mainScroll!=null)mainScroll.smoothScrollTo(0,0);
+        if(currencyQuoteSection==null)return;MainNavigationDisplay navigation=navigationPresenter.present(selectedSection,destination);String selected=navigation.currencySection;selectedCurrencySection=selected;
+        currencyQuoteSection.setVisibility("Cotação".equals(selected)?View.VISIBLE:View.GONE);
+        marketChartSection.setVisibility("Gráfico".equals(selected)?View.VISIBLE:View.GONE);
+        ptaxSection.setVisibility("PTAX".equals(selected)?View.VISIBLE:View.GONE);
+        converterSection.setVisibility("Converter".equals(selected)?View.VISIBLE:View.GONE);
+        compareSection.setVisibility("Outras".equals(selected)?View.VISIBLE:View.GONE);
+        for(Map.Entry<String,Button> entry:currencySectionButtons.entrySet()){Button tab=entry.getValue();boolean active=entry.getKey().equals(selected);tab.setSelected(active);tab.setBackground(shape(active?MINT:(light?0xFFE1ECEF:0xFF203641),12));tab.setTextColor(active?(light?0xFFFFFFFF:BG):MUTED);tab.setContentDescription(entry.getKey()+(active?", assunto selecionado":", abrir assunto"));}if(mainScroll!=null)mainScroll.smoothScrollTo(0,0);
     }
     private void add(LinearLayout parent,View child,int top){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(top);parent.addView(child,p);}
     private LinearLayout panel(LinearLayout parent,int color){LinearLayout l=column();l.setPadding(dp(16),dp(17),dp(16),dp(17));l.setBackground(shape(color,20));add(parent,l,12);return l;}
@@ -161,7 +164,7 @@ public final class MainActivity extends Activity {
         String incoming=getIntent().getStringExtra("currency");if(incoming!=null)try{RateStore.select(this,FxCurrency.valueOf(incoming));}catch(IllegalArgumentException ignored){}
         boolean hasTourism=getIntent().hasExtra("tourism"),incomingTourism=getIntent().getBooleanExtra("tourism",false);getIntent().removeExtra("currency");getIntent().removeExtra("tourism");currency=RateStore.active(this);tourismMode=currency==FxCurrency.USD&&(hasTourism?incomingTourism:Preferences.prefs(this).getBoolean("usd_tourism",false));if(hasTourism)Preferences.prefs(this).edit().putBoolean("usd_tourism",incomingTourism).apply();prefs=RateStore.prefs(this,currency);conversionUseCase=new ConvertCurrency(new AndroidConversionQuoteSource(getApplicationContext()));marketQuoteRefresh=AndroidMarketRefreshGateway.create(getApplicationContext());stockQuoteRefresh=new RefreshStockQuotes(new AndroidStockQuoteGateway(getApplicationContext()));marketHistoryRefresh=AndroidMarketHistoryGateway.create(getApplicationContext());ptaxStore=AndroidPtaxGateway.createStore(getApplicationContext());ptaxRefresh=AndroidPtaxGateway.create(getApplicationContext());tourismRefresh=AndroidTourismGateway.create(getApplicationContext());
         try{converterCurrency=FxCurrency.valueOf(Preferences.prefs(this).getString("converter_currency",currency.name()));}catch(IllegalArgumentException ignored){converterCurrency=currency;}converterTourismMode=converterCurrency==FxCurrency.USD&&Preferences.prefs(this).getBoolean("converter_usd_tourism",tourismMode);
-        if(saved!=null){days=saved.getInt("days",30);ptaxOpen=saved.getBoolean("ptaxOpen",false);marketPeriodDays=saved.getInt("marketPeriodDays",1);selectedSection=saved.getString("section","Moedas");selectedCurrencySection=saved.getString("currencySection","Cotação");try{converterCurrency=FxCurrency.valueOf(saved.getString("converterCurrency",converterCurrency.name()));}catch(IllegalArgumentException ignored){}converterTourismMode=converterCurrency==FxCurrency.USD&&saved.getBoolean("converterTourism",converterTourismMode);}
+        if(saved!=null){days=saved.getInt("days",30);ptaxOpen=saved.getBoolean("ptaxOpen",false);marketPeriodDays=saved.getInt("marketPeriodDays",1);MainNavigationDisplay navigation=navigationPresenter.present(saved.getString("section","Moedas"),saved.getString("currencySection","Cotação"));selectedSection=navigation.mainSection;selectedCurrencySection=navigation.currencySection;try{converterCurrency=FxCurrency.valueOf(saved.getString("converterCurrency",converterCurrency.name()));}catch(IllegalArgumentException ignored){}converterTourismMode=converterCurrency==FxCurrency.USD&&saved.getBoolean("converterTourism",converterTourismMode);}
         if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         UiBars.apply(this,light);
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
