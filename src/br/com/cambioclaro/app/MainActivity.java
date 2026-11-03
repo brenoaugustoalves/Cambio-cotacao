@@ -36,6 +36,8 @@ import br.com.cambioclaro.app.market.presentation.MarketQuotePresenter;
 import br.com.cambioclaro.app.market.presentation.MarketQuoteDisplay;
 import br.com.cambioclaro.app.market.presentation.PtaxQuotePresenter;
 import br.com.cambioclaro.app.market.presentation.PtaxQuoteDisplay;
+import br.com.cambioclaro.app.market.presentation.CurrencyOverviewPresenter;
+import br.com.cambioclaro.app.market.presentation.CurrencyOverviewDisplay;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.*;
@@ -61,6 +63,7 @@ public final class MainActivity extends Activity {
     private RefreshTourismQuotes tourismRefresh;
     private final MarketQuotePresenter marketQuotePresenter=new MarketQuotePresenter();
     private final PtaxQuotePresenter ptaxQuotePresenter=new PtaxQuotePresenter();
+    private final CurrencyOverviewPresenter currencyOverviewPresenter=new CurrencyOverviewPresenter();
     private boolean ptaxOpen=false;
     public static final long AUTO_REFRESH_MS=MarketRefreshPolicy.foregroundInterval(false,false);
     private static final long FULL_REFRESH_MS=MarketRefreshPolicy.FULL_REFRESH_INTERVAL_MS;
@@ -439,28 +442,15 @@ public final class MainActivity extends Activity {
         MarketClient.Quote tourism=Tourism.latest(this);if(tourism==null){tourismOverviewPrice.setText("Sem cotação turismo recebida");tourismOverviewDate.setText("Fonte: AwesomeAPI USD/BRLT");}else{tourismOverviewPrice.setText(money(tourism.ask,4)+" por USD 1");tourismOverviewDate.setText("Turismo · "+tourism.at.atZone(BcbClient.ZONE).format(DateTimeFormatter.ofPattern("dd/MM HH:mm",br))+" · "+(tourism.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today())?"hoje":"última disponível"));}
         for(FxCurrency item:overviewPrices.keySet()){
             MarketClient.Quote quote=MarketStore.latest(this,item);
-            List<Rate> data=RateStore.read(this,item);TextView price=overviewPrices.get(item),change=overviewChanges.get(item);
-            if(quote!=null){price.setText(money(quote.ask,4)+" por "+item.name()+" 1");List<MarketHistory.Point> observations=marketTodayPoints(item,quote);change.setText(marketVariation(quote,observations));change.setTextColor(marketVariationColor(observations,quote));continue;}
-            if(data.isEmpty()){price.setText(overviewErrors.containsKey(item)?"Fonte indisponível • tente atualizar":"Aguardando dados do Banco Central");change.setText("Sem cotação válida para comparar");change.setTextColor(MUTED);continue;}
-            Rate latest=data.get(data.size()-1);price.setText(money(latest.sell,4)+" por "+item.name()+" 1");
-            String detail="PTAX · publicado em "+latest.at.format(dayFormat);
-            if(data.size()>1){BigDecimal value=Rate.variation(data.get(data.size()-2).sell,latest.sell),shown=value.setScale(2,java.math.RoundingMode.HALF_UP);String direction=shown.signum()>0?"▲ Alta ":shown.signum()<0?"▼ Baixa ":"● Estável ";change.setText(direction+percent(value)+" · "+detail+(overviewErrors.containsKey(item)?"\nAtualização falhou • dado salvo":""));change.setTextColor(shown.signum()>0?MINT:shown.signum()<0?(light?0xFFA33122:0xFFF2B5A9):MUTED);}
-            else{change.setText(detail+" · sem publicação anterior");change.setTextColor(MUTED);}
+            List<Rate> data=RateStore.read(this,item);List<MarketObservation> observations=new ArrayList<>();if(quote!=null)for(MarketHistory.Point point:marketTodayPoints(item,quote))observations.add(new MarketObservation(point.ask,point.at));
+            CurrencyOverviewDisplay display=currencyOverviewPresenter.present(item,quote==null?null:new MarketObservation(quote.ask,quote.at),observations,data,overviewErrors.containsKey(item),BcbClient.today(),BcbClient.ZONE);
+            TextView price=overviewPrices.get(item),change=overviewChanges.get(item);price.setText(display.price);change.setText(display.change);
+            change.setTextColor(display.direction==2?AMBER:display.direction>0?MINT:display.direction<0?(light?0xFFA33122:0xFFF2B5A9):MUTED);
         }
     }
     private List<MarketHistory.Point> marketTodayPoints(FxCurrency item,MarketClient.Quote quote){
         TreeMap<Instant,MarketHistory.Point> observations=new TreeMap<>();for(MarketHistory.Point point:MarketArchive.period(this,item,1))if(point.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today()))observations.put(point.at,point);
         if(quote.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today()))observations.put(quote.at,new MarketHistory.Point(quote.at,quote.ask));return new ArrayList<>(observations.values());
-    }
-    private String marketVariation(MarketClient.Quote quote,List<MarketHistory.Point> observations){
-        ZonedDateTime currentAt=quote.at.atZone(BcbClient.ZONE);String stamp=currentAt.format(DateTimeFormatter.ofPattern("dd/MM HH:mm",br));
-        if(!currentAt.toLocalDate().equals(BcbClient.today()))return "Mercado · última publicação "+stamp+" · sem observação de hoje";
-        if(observations.size()<2)return "Mercado · "+stamp+" · variação indisponível: aguardando outra publicação";
-        return "Mercado · "+IntradayMovement.summary(observations,observations.size()-1)+" · publicação "+stamp;
-    }
-    private int marketVariationColor(List<MarketHistory.Point> observations,MarketClient.Quote quote){
-        if(!quote.at.atZone(BcbClient.ZONE).toLocalDate().equals(BcbClient.today()))return AMBER;
-        return observations.size()<2?MUTED:IntradayMovement.direction(observations,observations.size()-1)>0?MINT:IntradayMovement.direction(observations,observations.size()-1)<0?(light?0xFFA33122:0xFFF2B5A9):MUTED;
     }
     private void refreshFutures(){
         LocalDate today=BcbClient.today();

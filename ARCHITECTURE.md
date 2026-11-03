@@ -74,6 +74,8 @@ O simulador de custos foi organizado em `economy/domain`, `economy/application` 
 
 `PtaxQuotePresenter` formata a taxa de venda oficial, data da publicação e variação contra a PTAX anterior. Ele não mistura esses dados com cotações do mercado contínuo.
 
+`CurrencyOverviewPresenter` aplica a prioridade de fontes da lista de moedas e retorna textos de mercado ou PTAX identificados, direção e estado de disponibilidade. A Activity lê as fontes/caches e vincula a apresentação; movimento continua baseado em observações reais e datadas.
+
 `market.domain.Comparison` calcula séries de variação somente na interseção das datas publicadas entre moedas. Datas e séries ficam imutáveis; se não existe sobreposição suficiente, o resultado é vazio e não há interpolação.
 
 ### Apresentação

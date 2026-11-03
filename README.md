@@ -101,6 +101,7 @@ Os testes deste projeto cobrem parsing, cache, datas, séries reais, lacunas, se
 - `src/br/com/cambioclaro/app/market/presentation/`: apresentação de variações do gráfico a partir de cotações e horários publicados.
 - O cartão de mercado também usa esse pacote para apresentar preço, movimento, publicação e atualidade da fonte.
 - A PTAX oficial é apresentada separadamente, com a publicação anterior como base da variação.
+- A lista compacta de moedas também usa um apresentador que identifica se o valor veio do mercado ou da PTAX.
 - Em `market/domain`, comparação entre moedas usa apenas datas de publicação comuns e mantém séries imutáveis.
 - `AndroidEconomySources.java`: adaptadores Android para SGS/Focus, histórico macroeconômico e feeds oficiais; a coordenação resiliente dos lotes fica no caso de uso `RefreshSources`.
 - `EconomyFreshnessPolicy`: regra testável dos intervalos de validade do cache de indicadores e notícias.
